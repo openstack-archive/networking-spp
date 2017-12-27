@@ -5,7 +5,6 @@ function spp_pre_install(){
         if is_ubuntu; then
             echo "TODO: install packages necessary for DPDK build"
             sudo apt-get install -y libnuma-dev
-            sudo apt-get install -y libjansson-dev
             #NOTE(oda): it is environment dependent.
         fi
         #TODO: other OS support (ex. CentOS)

@@ -83,9 +83,9 @@ class SppVfApiTestCase(base.BaseTestCase):
 
     @mock.patch('networking_spp.agent.spp_api.SppVfApi'
                 '._exec_command')
-    def test_clear(self, m_exec_command):
-        self.spp_api.clear(self.sec_id)
-        m_exec_command.assert_called_with(self.sec_id, 'clear')
+    def test_cancel(self, m_exec_command):
+        self.spp_api.cancel(self.sec_id)
+        m_exec_command.assert_called_with(self.sec_id, 'cancel')
 
     @mock.patch('networking_spp.agent.spp_api.SppVfApi'
                 '._exec_command')

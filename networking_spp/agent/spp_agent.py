@@ -96,9 +96,8 @@ class SppAgent(object):
             num_vhost = mapping['num_vhost']
             phys = mapping['physical_network']
 
-            # TODO(oda): uncomment when clear command available
             # clear unflushed commands first
-            # self.spp_vf_api.clear(sec_id)
+            self.spp_vf_api.cancel(sec_id)
             info = self.spp_vf_api.get_status(sec_id)
 
             components = self._conf_components(sec_id, vhost_id, num_vhost)

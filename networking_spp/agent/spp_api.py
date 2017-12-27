@@ -53,8 +53,8 @@ class SppVfApi(object):
     def flush(self, sec_id):
         self._exec_command(sec_id, "flush")
 
-    def clear(self, sec_id):
-        self._exec_command(sec_id, "clear")
+    def cancel(self, sec_id):
+        self._exec_command(sec_id, "cancel")
 
     def set_classifier_table(self, sec_id, mac_address, port):
         command = ("classifier_table add mac {mac_address} {port}"
