@@ -77,6 +77,41 @@ class SppVfApiTestCase(base.BaseTestCase):
 
     @mock.patch('networking_spp.agent.spp_api.SppVfApi'
                 '._exec_command')
+    def test_port_add_add_vlantag(self, m_exec_command):
+        port = 'port'
+        direction = 'd'
+        comp_name = 'cn'
+        op = 'add_vlantag'
+        vlan_id = 10
+        command = "port add %s %s %s %s %s 0" % (port, direction, comp_name,
+                                                 op, vlan_id)
+        self.spp_api.port_add(self.sec_id, port, direction, comp_name,
+                              op, vlan_id)
+        m_exec_command.assert_called_with(self.sec_id, command)
+
+    @mock.patch('networking_spp.agent.spp_api.SppVfApi'
+                '._exec_command')
+    def test_port_add_del_vlantag(self, m_exec_command):
+        port = 'port'
+        direction = 'd'
+        comp_name = 'cn'
+        op = 'del_vlantag'
+        command = "port add %s %s %s %s" % (port, direction, comp_name, op)
+        self.spp_api.port_add(self.sec_id, port, direction, comp_name, op)
+        m_exec_command.assert_called_with(self.sec_id, command)
+
+    @mock.patch('networking_spp.agent.spp_api.SppVfApi'
+                '._exec_command')
+    def test_port_del(self, m_exec_command):
+        port = 'port'
+        direction = 'd'
+        comp_name = 'cn'
+        command = "port del %s %s %s" % (port, direction, comp_name)
+        self.spp_api.port_del(self.sec_id, port, direction, comp_name)
+        m_exec_command.assert_called_with(self.sec_id, command)
+
+    @mock.patch('networking_spp.agent.spp_api.SppVfApi'
+                '._exec_command')
     def test_flush(self, m_exec_command):
         self.spp_api.flush(self.sec_id)
         m_exec_command.assert_called_with(self.sec_id, 'flush')
@@ -89,24 +124,40 @@ class SppVfApiTestCase(base.BaseTestCase):
 
     @mock.patch('networking_spp.agent.spp_api.SppVfApi'
                 '._exec_command')
-    @mock.patch('networking_spp.agent.spp_api.SppVfApi'
-                '.flush')
-    def test_set_classifier_table(self, m_flush, m_exec_command):
+    def test_set_classifier_table(self, m_exec_command):
         mac = 'mac'
         port = 'port'
         command = "classifier_table add mac %s %s" % (mac, port)
         self.spp_api.set_classifier_table(self.sec_id, mac, port)
         m_exec_command.assert_called_with(self.sec_id, command)
-        m_flush.assert_called_with(self.sec_id)
 
     @mock.patch('networking_spp.agent.spp_api.SppVfApi'
                 '._exec_command')
-    @mock.patch('networking_spp.agent.spp_api.SppVfApi'
-                '.flush')
-    def test_clear_classifier_table(self, m_flush, m_exec_command):
+    def test_clear_classifier_table(self, m_exec_command):
         mac = 'mac'
         port = 'port'
         command = "classifier_table del mac %s %s" % (mac, port)
         self.spp_api.clear_classifier_table(self.sec_id, mac, port)
         m_exec_command.assert_called_with(self.sec_id, command)
-        m_flush.assert_called_with(self.sec_id)
+
+    @mock.patch('networking_spp.agent.spp_api.SppVfApi'
+                '._exec_command')
+    def test_set_classifier_table_with_vlan(self, m_exec_command):
+        mac = 'mac'
+        port = 'port'
+        vlan_id = 10
+        command = "classifier_table add vlan %s %s %s" % (vlan_id, mac, port)
+        self.spp_api.set_classifier_table_with_vlan(self.sec_id, mac, port,
+                                                    vlan_id)
+        m_exec_command.assert_called_with(self.sec_id, command)
+
+    @mock.patch('networking_spp.agent.spp_api.SppVfApi'
+                '._exec_command')
+    def test_clear_classifier_table_with_vlan(self, m_exec_command):
+        mac = 'mac'
+        port = 'port'
+        vlan_id = 10
+        command = "classifier_table del vlan %s %s %s" % (vlan_id, mac, port)
+        self.spp_api.clear_classifier_table_with_vlan(self.sec_id, mac, port,
+                                                      vlan_id)
+        m_exec_command.assert_called_with(self.sec_id, command)
