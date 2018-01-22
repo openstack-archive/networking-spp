@@ -67,6 +67,22 @@ class SppMechanismTestCase(base.BaseTestCase):
                 'SppMechanismDriver._spp_agent_alive')
     @mock.patch('networking_spp.mech_driver.mech_spp.'
                 'SppMechanismDriver._try_to_bind')
+    def test_bind_port_call_try_to_bind_vlan(self, mocked_try_to_bind,
+                                             mocked_spp_agent_alive):
+        # conditions to call _try_to_bind
+        agent_conf = [{'physical_network': 'phy_net'}]
+        self.driver.etcd.get.return_value = json.dumps(agent_conf)
+        mocked_spp_agent_alive.return_value = True
+        segment = {api.NETWORK_TYPE: constants.TYPE_VLAN,
+                   api.PHYSICAL_NETWORK: 'phy_net'}
+        self.context.segments_to_bind = [segment]
+        self.driver.bind_port(self.context)
+        mocked_try_to_bind.aseert_called()
+
+    @mock.patch('networking_spp.mech_driver.mech_spp.'
+                'SppMechanismDriver._spp_agent_alive')
+    @mock.patch('networking_spp.mech_driver.mech_spp.'
+                'SppMechanismDriver._try_to_bind')
     def test_bind_port_not_call_try_to_bind(self, mocked_try_to_bind,
                                             mocked_spp_agent_alive):
         # conditions not to call _try_to_bind
@@ -207,7 +223,7 @@ class SppMechanismTestCase(base.BaseTestCase):
         mocked_action_key.side_effect = lambda host, port: host + port
         mocked_bind_port_key.side_effect = lambda host, port: host + port
         self.driver.etcd.put.side_effect = self._put
-        self.driver._add_bind_port(self.context, '1')
+        self.driver._add_bind_port(self.context, '1', None)
         args, w = self.driver.etcd.put.call_args
         self.assertEqual(args[0], 'host1AAAABBBB')
         self.assertEqual(self.driver.etcd.put.call_count, 2)
@@ -227,12 +243,14 @@ class SppMechanismTestCase(base.BaseTestCase):
         self.context.host = 'host1'
         segment = {api.NETWORK_TYPE: constants.TYPE_FLAT,
                    api.PHYSICAL_NETWORK: 'phy1',
+                   api.SEGMENTATION_ID: None,
                    api.ID: 'id'}
         mocked_vhost_phys_prefix.side_effect = \
             lambda a, b: '/x/y/%s/%s/' % (a, b)
         value = [('/x/y/host1/phy1/1', '1234AAAA'),
                  ('/x/y/host1/phy1/2', 'EEEE4444'),
                  ('/x/y/host1/phy1/3', 'None')]
+        self.driver.etcd.get.return_value = None
         self.driver.etcd.get_prefix.return_value = value
         self.driver.etcd.replace.return_value = True
         mocked_wait_plug_port.return_value = True
@@ -269,6 +287,7 @@ class SppMechanismTestCase(base.BaseTestCase):
         value = [('/x/y/host1/phy1/1', '1234AAAA'),
                  ('/x/y/host1/phy1/2', 'EEEE4444'),
                  ('/x/y/host1/phy1/3', '99999999')]
+        self.driver.etcd.get.return_value = None
         self.driver.etcd.get_prefix.return_value = value
         self.driver.etcd.replace.return_value = True
 

@@ -42,6 +42,9 @@ class SppMechanismDriver(api.MechanismDriver):
 
     def _try_to_bind(self, context, segment):
         port_id = context.current['id']
+        if self.etcd.get(etcd_key.bind_port_key(context.host, port_id)):
+            # check already trid to bind at first.
+            return
         phys = segment[api.PHYSICAL_NETWORK]
         prefix = etcd_key.vhost_phys_prefix(context.host, phys)
         vhost_id = None
@@ -56,7 +59,7 @@ class SppMechanismDriver(api.MechanismDriver):
             LOG.warn("no vhost available for port %s", port_id)
             return
 
-        self._add_bind_port(context, vhost_id)
+        self._add_bind_port(context, vhost_id, segment[api.SEGMENTATION_ID])
         if not self._wait_plug_port(context.host, port_id):
             return
 
@@ -87,14 +90,17 @@ class SppMechanismDriver(api.MechanismDriver):
             return
 
         for segment in context.segments_to_bind:
-            if (segment[api.NETWORK_TYPE] in [constants.TYPE_FLAT] and
-                    segment[api.PHYSICAL_NETWORK] in phys_nets):
+            if (segment[api.NETWORK_TYPE] in [constants.TYPE_FLAT,
+                                              constants.TYPE_VLAN]
+                    and segment[api.PHYSICAL_NETWORK] in phys_nets):
                 self._try_to_bind(context, segment)
                 return
 
-    def _add_bind_port(self, context, vhost_id):
+    def _add_bind_port(self, context, vhost_id, vlan_id):
         port = context.current
         value = {'mac_address': port['mac_address'], 'vhost_id': int(vhost_id)}
+        if vlan_id is not None:
+            value['vlan_id'] = vlan_id
         value = json.dumps(value)
         key = etcd_key.bind_port_key(context.host, port['id'])
         self.etcd.put(key, value)

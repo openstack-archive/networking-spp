@@ -207,7 +207,7 @@ class SppAgentTestCase(base.BaseTestCase):
         self.agent.vhostusers[1] = mock.Mock()
         self.agent.vhostusers[1].mac_address = mac
 
-        ret = self.agent.set_classifier_table(1, mac)
+        ret = self.agent.set_classifier_table(1, mac, None)
         self.assertEqual(ret, None)
         self.assertEqual(self.agent.spp_vf_api.set_classifier_table.call_count,
                          0)
@@ -216,11 +216,25 @@ class SppAgentTestCase(base.BaseTestCase):
         # conditions to exec correctly
         mac = '12:ab:34:cd:56:ef'
         self.agent.vhostusers[1] = mock.Mock()
-        self.agent.vhostusers[1].mac_address = '32:ab:34:cd:56:ef'
+        self.agent.vhostusers[1].mac_address = 'unuse'
 
-        self.agent.set_classifier_table(1, mac)
+        self.agent.set_classifier_table(1, mac, None)
         self.assertEqual(self.agent.spp_vf_api.set_classifier_table.call_count,
                          1)
+        self.assertEqual(self.agent.spp_vf_api.flush.call_count, 1)
+        self.assertEqual(self.agent.vhostusers[1].mac_address, mac)
+
+    def test_set_classifier_table_with_vlan(self):
+        mac = '12:ab:34:cd:56:ef'
+        self.agent.vhostusers[1] = mock.Mock()
+        self.agent.vhostusers[1].mac_address = 'unuse'
+
+        self.agent.set_classifier_table(1, mac, 10)
+        self.assertEqual(self.agent.spp_vf_api.port_add.call_count, 2)
+        self.assertEqual(self.agent.spp_vf_api.port_del.call_count, 2)
+        self.assertEqual(
+            self.agent.spp_vf_api.set_classifier_table_with_vlan.call_count, 1)
+        self.assertEqual(self.agent.spp_vf_api.flush.call_count, 1)
         self.assertEqual(self.agent.vhostusers[1].mac_address, mac)
 
     def test_clear_classifier_table_con1(self):
@@ -229,7 +243,7 @@ class SppAgentTestCase(base.BaseTestCase):
         self.agent.vhostusers[1] = mock.Mock()
         self.agent.vhostusers[1].mac_address = mac
 
-        ret = self.agent.clear_classifier_table(1, mac)
+        ret = self.agent.clear_classifier_table(1, mac, None)
         self.assertEqual(ret, None)
         count = self.agent.spp_vf_api.clear_classifier_table.call_count
         self.assertEqual(count, 0)
@@ -240,9 +254,23 @@ class SppAgentTestCase(base.BaseTestCase):
         self.agent.vhostusers[1] = mock.Mock()
         self.agent.vhostusers[1].mac_address = mac
 
-        self.agent.clear_classifier_table(1, mac)
+        self.agent.clear_classifier_table(1, mac, None)
         count = self.agent.spp_vf_api.clear_classifier_table.call_count
         self.assertEqual(count, 1)
+        self.assertEqual(self.agent.spp_vf_api.flush.call_count, 1)
+        self.assertEqual(self.agent.vhostusers[1].mac_address, 'unuse')
+
+    def test_clear_classifier_table_with_vlan(self):
+        mac = '12:ab:34:cd:56:ef'
+        self.agent.vhostusers[1] = mock.Mock()
+        self.agent.vhostusers[1].mac_address = mac
+
+        self.agent.clear_classifier_table(1, mac, 10)
+        self.assertEqual(self.agent.spp_vf_api.port_add.call_count, 2)
+        self.assertEqual(self.agent.spp_vf_api.port_del.call_count, 2)
+        cnt = self.agent.spp_vf_api.clear_classifier_table_with_vlan.call_count
+        self.assertEqual(cnt, 1)
+        self.assertEqual(self.agent.spp_vf_api.flush.call_count, 1)
         self.assertEqual(self.agent.vhostusers[1].mac_address, 'unuse')
 
     @mock.patch('networking_spp.agent.spp_agent.SppAgent.set_classifier_table')
@@ -254,8 +282,8 @@ class SppAgentTestCase(base.BaseTestCase):
         self.agent.host = 'host1'
         key = '/spp/openstack/port_status/host1/111'
 
-        self.agent._plug_port(port_id, vhost_id, mac)
-        m_set.assert_called_with(vhost_id, mac)
+        self.agent._plug_port(port_id, vhost_id, mac, None)
+        m_set.assert_called_with(vhost_id, mac, None)
         self.agent.etcd.put.assert_called_with(key, "up")
 
     @mock.patch('networking_spp.common.etcd_key.bind_port_key')
@@ -281,8 +309,8 @@ class SppAgentTestCase(base.BaseTestCase):
         self.agent.vhostusers = {1: vhostuser}
         m_vhost_key.return_value = 'key'
 
-        self.agent._unplug_port(port_id, vhost_id, mac)
-        m_clear.assert_called_with(vhost_id, mac)
+        self.agent._unplug_port(port_id, vhost_id, mac, None)
+        m_clear.assert_called_with(vhost_id, mac, None)
         m_vhost_key.assert_called_with('host', 'phy_net', vhost_id)
         self.agent.etcd.replace.assert_called_once()
         m_bind_port_key.assert_called_with('host', port_id)
@@ -308,18 +336,19 @@ class SppAgentTestCase(base.BaseTestCase):
         self.agent.etcd.get.side_effect = [value, 'plug']
 
         self.agent._do_plug_unplug(port_id)
-        m_plug_port.assert_called_with(port_id, 1, '12:34:56:78:90:ab')
+        m_plug_port.assert_called_with(port_id, 1, '12:34:56:78:90:ab', None)
 
     @mock.patch('networking_spp.agent.spp_agent.SppAgent._unplug_port')
     def test_do_plug_unplug_con3(self, m_unplug_port):
         # conditions to exec the else statement
         port_id = 111
-        data = {"vhost_id": 1, 'mac_address': '12:34:56:78:90:ab'}
+        data = {"vhost_id": 1, 'mac_address': '12:34:56:78:90:ab',
+                'vlan_id': 10}
         value = json.dumps(data)
-        self.agent.etcd.get.side_effect = [value, '']
+        self.agent.etcd.get.side_effect = [value, 'unplug']
 
         self.agent._do_plug_unplug(port_id)
-        m_unplug_port.assert_called_with(port_id, 1, '12:34:56:78:90:ab')
+        m_unplug_port.assert_called_with(port_id, 1, '12:34:56:78:90:ab', 10)
 
     @mock.patch('networking_spp.common.etcd_key.action_host_prefix')
     @mock.patch('networking_spp.agent.spp_agent.SppAgent._do_plug_unplug')

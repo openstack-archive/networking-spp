@@ -184,51 +184,84 @@ class SppAgent(object):
     def _init_vhost_mac_address(self, info):
         table = info.get("classifier_table", [])
         for entry in table:
-            if entry["type"] == "mac" and entry["port"].startswith("ring:"):
+            if (entry["type"] in ["mac", "vlan"] and
+                    entry["port"].startswith("ring:")):
                 ring_id = int(entry["port"][len("ring:"):])
                 vhost_id = ring_id // 2
+                mac_string = entry["value"]
+                if entry["type"] == "vlan":
+                    _vlan_id, mac_string = mac_string.split('/')
                 # match format of neutron standard
-                mac = str(netaddr.EUI(entry["value"],
+                mac = str(netaddr.EUI(mac_string,
                                       dialect=netaddr.mac_unix_expanded))
                 self.vhostusers[vhost_id].mac_address = mac
 
-    def set_classifier_table(self, vhost_id, mac_address):
+    def set_classifier_table(self, vhost_id, mac_address, vlan_id):
         vhost = self.vhostusers[vhost_id]
         if vhost.mac_address == mac_address:
             LOG.debug("classifier table already set: %d: %s",
                       vhost_id, mac_address)
             return
 
-        port = _rx_ring_port(vhost_id)
-        self.spp_vf_api.set_classifier_table(vhost.sec_id, mac_address, port)
+        rx_port = _rx_ring_port(vhost_id)
+        if vlan_id is None:
+            self.spp_vf_api.set_classifier_table(vhost.sec_id, mac_address,
+                                                 rx_port)
+        else:
+            forwarder = "forward_%d_rx" % vhost_id
+            self.spp_vf_api.port_del(vhost.sec_id, _vhost_port(vhost_id), "rx",
+                                     forwarder)
+            self.spp_vf_api.port_add(vhost.sec_id, _vhost_port(vhost_id), "rx",
+                                     forwarder, "add_vlantag", vlan_id)
+            self.spp_vf_api.port_del(vhost.sec_id, rx_port, "tx", "classifier")
+            self.spp_vf_api.port_add(vhost.sec_id, rx_port, "tx", "classifier",
+                                     "del_vlantag")
+            self.spp_vf_api.set_classifier_table_with_vlan(vhost.sec_id,
+                                                           mac_address,
+                                                           rx_port, vlan_id)
+        self.spp_vf_api.flush(vhost.sec_id)
 
         vhost.mac_address = mac_address
 
-    def clear_classifier_table(self, vhost_id, mac_address):
+    def clear_classifier_table(self, vhost_id, mac_address, vlan_id):
         vhost = self.vhostusers[vhost_id]
         if vhost.mac_address == "unuse":
             LOG.debug("classifier table already clear: %d", vhost_id)
             return
 
-        port = _rx_ring_port(vhost_id)
-        self.spp_vf_api.clear_classifier_table(vhost.sec_id, mac_address, port)
+        rx_port = _rx_ring_port(vhost_id)
+        if vlan_id is None:
+            self.spp_vf_api.clear_classifier_table(vhost.sec_id, mac_address,
+                                                   rx_port)
+        else:
+            forwarder = "forward_%d_rx" % vhost_id
+            self.spp_vf_api.port_del(vhost.sec_id, _vhost_port(vhost_id), "rx",
+                                     forwarder)
+            self.spp_vf_api.port_add(vhost.sec_id, _vhost_port(vhost_id), "rx",
+                                     forwarder)
+            self.spp_vf_api.port_del(vhost.sec_id, rx_port, "tx", "classifier")
+            self.spp_vf_api.port_add(vhost.sec_id, rx_port, "tx", "classifier")
+            self.spp_vf_api.clear_classifier_table_with_vlan(vhost.sec_id,
+                                                             mac_address,
+                                                             rx_port, vlan_id)
+        self.spp_vf_api.flush(vhost.sec_id)
 
         vhost.mac_address = "unuse"
 
-    def _plug_port(self, port_id, vhost_id, mac_address):
-        LOG.info("plug port %s: mac: %s, vhost: %d", port_id,
-                 mac_address, vhost_id)
+    def _plug_port(self, port_id, vhost_id, mac_address, vlan_id):
+        LOG.info("plug port %s: mac: %s, vhost: %d, vlan_id: %s", port_id,
+                 mac_address, vhost_id, vlan_id)
 
-        self.set_classifier_table(vhost_id, mac_address)
+        self.set_classifier_table(vhost_id, mac_address, vlan_id)
 
         key = etcd_key.port_status_key(self.host, port_id)
         self.etcd.put(key, "up")
 
-    def _unplug_port(self, port_id, vhost_id, mac_address):
-        LOG.info("unplug port %s: mac: %s, vhost: %d", port_id,
-                 mac_address, vhost_id)
+    def _unplug_port(self, port_id, vhost_id, mac_address, vlan_id):
+        LOG.info("unplug port %s: mac: %s, vhost: %d, vlan_id: %s", port_id,
+                 mac_address, vhost_id, vlan_id)
 
-        self.clear_classifier_table(vhost_id, mac_address)
+        self.clear_classifier_table(vhost_id, mac_address, vlan_id)
 
         phys = self.vhostusers[vhost_id].physical_network
         key = etcd_key.vhost_key(self.host, phys, vhost_id)
@@ -250,12 +283,13 @@ class SppAgent(object):
             data = json.loads(value)
             vhost_id = data['vhost_id']
             mac_address = data['mac_address']
+            vlan_id = data.get('vlan_id')
             # get action again to get the newest value
             op = self.etcd.get(etcd_key.action_key(self.host, port_id))
             if op == "plug":
-                self._plug_port(port_id, vhost_id, mac_address)
+                self._plug_port(port_id, vhost_id, mac_address, vlan_id)
             else:
-                self._unplug_port(port_id, vhost_id, mac_address)
+                self._unplug_port(port_id, vhost_id, mac_address, vlan_id)
 
     def port_plug_watch(self):
         LOG.info("SPP port_plug_watch stated")

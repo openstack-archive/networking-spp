@@ -15,7 +15,6 @@
 
 import json
 import mock
-from time import sleep
 
 from networking_spp.agent import spp_manager
 from networking_spp.agent.spp_manager import SPP_PRIMATY_SERVICE
@@ -296,5 +295,8 @@ class SppManagerTestCase(base.BaseTestCase):
         self.assertEqual(m_wait_service.call_count, 0)
 
     def test_wait_service_initialized(self):
+        def dummy(sec):
+            pass
+
         # exec try statement
-        self.assertEqual(None, spp_manager._wait_service_initialized(sleep, 2))
+        self.assertEqual(None, spp_manager._wait_service_initialized(dummy, 2))
