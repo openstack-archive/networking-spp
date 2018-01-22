@@ -45,8 +45,18 @@ class SppVfApi(object):
                    .format(**locals()))
         self._exec_command(sec_id, command)
 
-    def port_add(self, sec_id, port, direction, comp_name):
+    def port_add(self, sec_id, port, direction, comp_name,
+                 op=None, vlan_id=None):
         command = ("port add {port} {direction} {comp_name}"
+                   .format(**locals()))
+        if op:
+            command += " %s" % op
+            if op == "add_vlantag":
+                command += " %d 0" % vlan_id
+        self._exec_command(sec_id, command)
+
+    def port_del(self, sec_id, port, direction, comp_name):
+        command = ("port del {port} {direction} {comp_name}"
                    .format(**locals()))
         self._exec_command(sec_id, command)
 
@@ -60,10 +70,20 @@ class SppVfApi(object):
         command = ("classifier_table add mac {mac_address} {port}"
                    .format(**locals()))
         self._exec_command(sec_id, command)
-        self.flush(sec_id)
 
     def clear_classifier_table(self, sec_id, mac_address, port):
         command = ("classifier_table del mac {mac_address} {port}"
                    .format(**locals()))
         self._exec_command(sec_id, command)
-        self.flush(sec_id)
+
+    def set_classifier_table_with_vlan(self, sec_id, mac_address, port,
+                                       vlan_id):
+        command = ("classifier_table add vlan {vlan_id} {mac_address} {port}"
+                   .format(**locals()))
+        self._exec_command(sec_id, command)
+
+    def clear_classifier_table_with_vlan(self, sec_id, mac_address, port,
+                                         vlan_id):
+        command = ("classifier_table del vlan {vlan_id} {mac_address} {port}"
+                   .format(**locals()))
+        self._exec_command(sec_id, command)
