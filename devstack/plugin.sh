@@ -181,7 +181,6 @@ function build_spp_primary_service() {
     iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
     iniset -sudo $unitfile "Service" "User" "root"
     iniset -sudo $unitfile "Service" "ExecStart" "$PRIMARY_CMD"
-    iniset -sudo $unitfile "Install" "WantedBy" "multi-user.target"
 }
 
 function build_spp_vf_service() {
@@ -196,8 +195,6 @@ function build_spp_vf_service() {
     iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
     iniset -sudo $unitfile "Service" "User" "root"
     iniset -sudo $unitfile "Service" "ExecStart" "$SEC_CMD"
-    #iniset -sudo $unitfile "Service" "Restart" "on-failure"
-    iniset -sudo $unitfile "Install" "WantedBy" "multi-user.target"
 }
 
 function build_systemd_services() {
@@ -221,7 +218,7 @@ function build_systemd_services() {
 }
 
 function stop_systemd_services() {
-    $SYSTEMCTL stop devstack@q-spp-agt.service
+    stop_process q-spp-agt
     MAPPINGS=${DPDK_PORT_MAPPINGS//,/ }
     ARRAY=( $MAPPINGS )
     for ((i=1; i<=${#ARRAY[@]}; i++)); do
