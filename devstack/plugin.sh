@@ -227,6 +227,17 @@ function stop_systemd_services() {
     $SYSTEMCTL stop spp_primary.service
 }
 
+function prepare_tempest() {
+    # NOTE: DEFALUT_IMAGE_NAME must be specified in local.conf explicitly.
+    openstack flavor create "$DEFAULT_INSTANCE_TYPE" --ram 4096 --disk 20 --vcpus 2 --public --property hw:mem_page_size=large
+
+    if [ ! -e "$NETWORKING_SPP_DIR/devstack/image/image.qcow2" ]; then
+        $NETWORKING_SPP_DIR/devstack/image/build_image.sh $NETWORKING_SPP_DIR
+    fi
+
+    openstack --os-cloud=devstack-admin --os-region-name="$REGION_NAME" image create "$DEFAULT_IMAGE_NAME" --public --container-format bare --disk-format qcow2 < $NETWORKING_SPP_DIR/devstack/image/image.qcow2
+}
+
 if [[ "$1" == "stack" ]]; then
     case "$2" in
         pre-install)
@@ -258,6 +269,11 @@ if [[ "$1" == "stack" ]]; then
                 # start spp-agent
                 # spp services will start from spp-agent.
                 run_process q-spp-agt "$SPP_AGENT_BINARY --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE"
+            fi
+            if [ "$SPP_MODE" == "controller" ]; then
+                if is_service_enabled tempest; then
+                    prepare_tempest
+                fi
             fi
             ;;
     esac
