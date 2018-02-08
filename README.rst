@@ -96,7 +96,7 @@ is specified as second and subsequent networks.
 Restrictions
 ============
 
-* flat type network only available.
+* flat or vlan type network only available.
 * security group is not supported.
   It does not cause an error as an API, but it is ignored even if it is set.
 * VM using an SPP network can not perform live migration.

@@ -35,12 +35,14 @@ Note that it is a fragment extracted only for networking-spp::
 
   [[post-config|/$Q_PLUGIN_CONF_FILE]]
   [ml2]
-  type_drivers=vxlan,flat            # 'flat' must be added in addition to VM operation network (vxlan is an example).
+  type_drivers=vxlan,flat,vlan       # add 'flat' and 'vlan' if necessary, in addition to VM operation network (vxlan is an example).
   mechanism_drivers=linuxbridge,spp  # 'spp' must be added in addition to VM operation network (linuxbridge is an example).
 
   [ml2_type_flat]
-  flat_networks=phys1,phys2          # specify physical networks for SPP. the value is an example.
+  flat_networks=phys1                # specify physical networks for SPP flat type network. the value is an example.
 
+  [ml2_type_vlan]
+  network_vlan_ranges=phys2:400:499  # specify parameters for SPP vlan type network. the value is an example.
 
 Compute node
 ============
@@ -191,3 +193,8 @@ It can be confirmed with the following command::
 
   $ openstack hypervisor list
 
+Note: rebooting compute node
+----------------------------
+
+When rebooting compute node, you need to execute unstack.sh before shutting down
+and execute stack.sh after rebooting.

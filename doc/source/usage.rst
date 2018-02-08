@@ -5,11 +5,17 @@ Usage
 Create an SPP network
 =====================
 
-example::
+example(flat type)::
 
   $ openstack network create net1 --provider-network-type flat \
     --provider-physical-network phys1
   $ openstack subnet create sub1 --network net1 --no-dhcp --subnet-range 110.0.0.0/24
+
+example(vlan type)::
+
+  $ openstack network create net2 --provider-network-type vlan \
+    --provider-physical-network phys2
+  $ openstack subnet create sub2 --network net2 --no-dhcp --subnet-range 120.0.0.0/24
 
 Setting of flavor
 =================
@@ -42,6 +48,16 @@ example::
 
   $ openstack server create server1 --image ubuntu-dpdk --flavor m1.large \
     --network private --network net1 --availability-zone nova:host1
+
+Notes on using vlan network
+---------------------------
+
+When using the vlan network, it is necessary to turn off the offload function
+of the assigned NIC on the VM.
+
+example(on the VM)::
+
+  $ sudo ethtool -K ens4 tx off
 
 Add and remove port
 ===================

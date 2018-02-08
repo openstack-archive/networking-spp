@@ -209,6 +209,8 @@ vhost_id
 mac_address
   mac address of the port.
 
+vlan_id
+  vlan id of the network to which the port belongs. (It exists only when using vlan network)
 
 /spp/openstack/action/<host>/<port id>
 ++++++++++++++++++++++++++++++++++++++
