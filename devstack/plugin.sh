@@ -228,7 +228,7 @@ function stop_systemd_services() {
 }
 
 function prepare_tempest() {
-    # NOTE: DEFALUT_IMAGE_NAME must be specified in local.conf explicitly.
+    # NOTE: DEFAULT_IMAGE_NAME must be specified in local.conf explicitly.
     openstack flavor create "$DEFAULT_INSTANCE_TYPE" --ram 4096 --disk 20 --vcpus 2 --public --property hw:mem_page_size=large
 
     if [ ! -e "$NETWORKING_SPP_DIR/devstack/image/image.qcow2" ]; then
