@@ -21,6 +21,7 @@ import netaddr
 import signal
 import sys
 
+from neutron_lib.agent import topics
 from neutron_lib import context
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -34,7 +35,6 @@ from networking_spp.common import etcd_config  # noqa
 from networking_spp.common import etcd_key
 from neutron.agent import rpc as agent_rpc
 from neutron.common import config as common_config
-from neutron.common import topics
 
 
 LOG = logging.getLogger(__name__)
