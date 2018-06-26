@@ -25,7 +25,7 @@ from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 MSG_SIZE = 4096
-CONNECTION_TIMEOUT = 60
+CONNECTION_TIMEOUT = 180
 
 
 class SppConnectionManager(object):
