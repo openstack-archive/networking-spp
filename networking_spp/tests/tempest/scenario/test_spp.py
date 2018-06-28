@@ -49,7 +49,7 @@ class SppTest(base.BaseTempestTestCase):
         subnet = self.create_subnet(network)
 
         network1 = self.create_network('network1', **net_kwargs)
-        self.create_subnet(network1,
+        self.create_subnet(network1, reserve_cidr=False,
                            cidr=netaddr.IPNetwork('30.0.0.0/28'))
 
         secgroup = self.os_admin.network_client.create_security_group(
