@@ -1,0 +1,42 @@
+- job:
+    name: networking-spp-tempest-test
+    parent: base
+    run: playbooks/networking-spp-tempest/networking-spp-tempest.yaml
+    nodeset:
+      nodes:
+        - name: controller1
+          label: spp-install-ct
+        - name: compute1
+          label: spp-install-cp
+        - name: compute2
+          label: spp-install-cp
+      groups:
+        - name: controller
+          nodes:
+            - controller1
+        - name: compute
+          nodes:
+            - compute1
+            - compute2
+    group-vars:
+      controller:
+        nodetype: "ctrl"
+      compute:
+        nodetype: "compute"
+    voting: false
+
+- project:
+    name: openstack/networking-spp
+    check:
+      jobs:
+        - networking-spp-tempest-test
+
+- nodeset:
+    name: nodeset-networking-spp
+    nodes:
+      - name: testvm
+        label: spp-install-ct
+    groups:
+      - name: test
+        nodes:
+          - testvm

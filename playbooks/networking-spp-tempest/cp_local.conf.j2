@@ -1,0 +1,57 @@
+[[local|localrc]]
+HOST_IP={{ hostvars[inventory_hostname]['nodepool']['public_ipv4'] }}
+ADMIN_PASSWORD=stack
+MYSQL_PASSWORD=$ADMIN_PASSWORD
+RABBIT_PASSWORD=$ADMIN_PASSWORD
+ADMIN_PASSWORD=$ADMIN_PASSWORD
+SERVICE_PASSWORD=$ADMIN_PASSWORD
+SERVICE_TOKEN=$ADMIN_PASSWORD
+LOGFILE=$DEST/logs/stack.sh.log
+LOGDAYS=2
+
+SERVICE_HOST={{ hostvars['controller1']['nodepool']['public_ipv4'] }}
+MYSQL_HOST=$SERVICE_HOST
+RABBIT_HOST=$SERVICE_HOST
+Q_HOST=$SERVICE_HOST
+GLANCE_HOSTPORT=$SERVICE_HOST:9292
+
+NOVA_VNC_ENABLED=True
+VNCSERVER_PROXYCLIENT_ADDRESS=$HOST_IP
+VNCSERVER_LISTEN=0.0.0.0
+
+Q_AGENT=linuxbridge
+
+DPDK_GIT_TAG=v18.02
+SPP_ALLOCATE_HUGEPAGES=True
+SPP_NUM_HUGEPAGES=6144
+SPP_PRIMARY_SOCKET_MEM=1024
+SPP_PRIMARY_CORE_MASK=0x2
+DPDK_PORT_MAPPINGS=00:04.0#phys1#2#0xfe,00:05.0#phys2#2#0xfc02
+
+enable_plugin networking-spp https://git.openstack.org/openstack/networking-spp {{ zuul_ref }}
+disable_all_services
+enable_service n-cpu
+enable_service q-agt
+enable_service q-spp-agt
+
+[[post-config|/$Q_PLUGIN_CONF_FILE]]
+[agent]
+tunnel_types=vxlan
+l2_population=False
+
+[[post-config|$NOVA_CONF]]
+[DFAULT]
+vcpu_pin_set = 8,9
+
+[libvirt]
+cpu_mode = host-passthrough
+
+[placement]
+os_region_name = RegionOne
+project_domain_name = Default
+project_name = service
+user_domain_name = Default
+password = stack
+username = placement
+auth_url = http://{{ hostvars['controller1']['nodepool']['public_ipv4'] }}/identity
+auth_type = password
