@@ -1,0 +1,47 @@
+- job:
+    name: networking-spp-tempest-test
+    parent: base
+    pre-run: playbooks/networking-spp-tempest/pre.yaml
+    run: playbooks/networking-spp-tempest/run.yaml
+    post-run: playbooks/networking-spp-tempest/post.yaml
+    nodeset:
+      nodes:
+        - name: controller1
+          label: spp-install-ct
+        - name: compute1
+          label: spp-install-cp
+        - name: compute2
+          label: spp-install-cp
+      groups:
+        - name: controller
+          nodes:
+            - controller1
+        - name: compute
+          nodes:
+            - compute1
+            - compute2
+    group-vars:
+      controller:
+        nodetype: "ctrl"
+      compute:
+        nodetype: "compute"
+    voting: false
+    success-message: "Please confirm results. Contact info: networking.spp.integration@gmail.com . For more information, see https://wiki.openstack.org/wiki/ThirdPartySystems/Networking-spp_Integration_CI"
+    failure-message: "Please confirm results. Contact info: networking.spp.integration@gmail.com . For more information, see https://wiki.openstack.org/wiki/ThirdPartySystems/Networking-spp_Integration_CI"
+
+
+- project:
+    name: openstack/networking-spp
+    check:
+      jobs:
+        - networking-spp-tempest-test
+
+- nodeset:
+    name: nodeset-networking-spp
+    nodes:
+      - name: testvm
+        label: spp-install-ct
+    groups:
+      - name: test
+        nodes:
+          - testvm
