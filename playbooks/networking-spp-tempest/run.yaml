@@ -1,0 +1,131 @@
+- hosts: all
+  vars:
+    - zuul_ref: "{{ zuul.ref }}" # For sample template
+    - zuul_change: "{{ zuul.change }}"
+    - zuul_patchset: "{{ zuul.patchset }}"
+    - zuul_branch: "{{ zuul.branch }}"
+
+  tasks:
+    - block:
+      - name: Get date
+        set_fact:
+          test_date: "{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
+      - name: Copy controller local.conf
+        template:
+          src: ct_local.conf.j2
+          dest: /home/ubuntu/local.conf
+          owner: ubuntu
+          group: ubuntu
+          mode: 0664
+        when: inventory_hostname in groups['controller']
+
+      - name: Copy compute local.conf
+        template:
+          src: cp_local.conf.j2
+          dest: /home/ubuntu/local.conf
+          owner: ubuntu
+          group: ubuntu
+          mode: 0664
+        when: inventory_hostname in groups['compute']
+
+      - name: Copy controller build job
+        template:
+          src:  build_controller.sh.j2
+          dest: /home/ubuntu/job.sh
+          owner: ubuntu
+          group: ubuntu
+          mode: 0775
+        when: inventory_hostname in groups['controller']
+
+      - name: Copy compute build job
+        template:
+          src:  build_compute.sh.j2
+          dest: /home/ubuntu/job.sh
+          owner: ubuntu
+          group: ubuntu
+          mode: 0775
+        when: inventory_hostname in groups['compute']
+
+      - name: Copy run tempest job
+        template:
+          src:  run_tempest.sh.j2
+          dest: /home/ubuntu/run_tempest.sh
+          owner: ubuntu
+          group: ubuntu
+          mode: 0775
+        when: inventory_hostname in groups['controller']
+
+      - name: Copy send logs job
+        template:
+          src:  send_job.sh.j2
+          dest: /home/ubuntu/send.sh
+          owner: ubuntu
+          group: ubuntu
+          mode: 0775
+
+      - name: copy extend apt timeout
+        copy:
+          src: 77timeoutextend
+          dest: /home/ubuntu/77timeoutextend
+          owner: ubuntu
+          group: ubuntu
+          mode: 0644
+
+      - name: Run building controller job
+        shell: ./job.sh 2>> /home/ubuntu/console.log 1>>/home/ubuntu/console.log
+        register: resultct
+        when: inventory_hostname in groups['controller']
+
+      - name: Run building compute job
+        shell: ./job.sh 2>>/home/ubuntu/console.log 1>>/home/ubuntu/console.log
+        register: resultcp
+        when:
+          - inventory_hostname in groups['compute']
+          - hostvars['controller1']['resultct']['rc'] == 0
+
+      - name: Run tempest job
+        shell: ./run_tempest.sh 2>>/home/ubuntu/console.log 1>>/home/ubuntu/console.log
+        register: result
+        when:
+          - inventory_hostname in groups['controller']
+          - hostvars['compute1']['resultcp']['rc'] == 0
+          - hostvars['compute2']['resultcp']['rc'] == 0
+
+      always:
+        - name: copy job-output
+          copy:
+            src: "{{ zuul.executor.log_root }}/job-output.txt"
+            dest: /home/ubuntu/job-output.txt
+            owner: ubuntu
+            group: ubuntu
+            mode: 0664
+
+        - name: Define zuul_info_dir fact
+          set_fact:
+            zuul_info_dir: "{{ zuul.executor.log_root }}/zuul-info"
+
+        - name: Ensure Zuul Ansible directory exists
+          delegate_to: localhost
+          run_once: true
+          file:
+            path: "{{ zuul_info_dir }}"
+            state: directory
+
+        - name: Collect information about the host
+          setup:
+          register: setupinfo
+
+        - name: Write out all ansible variables/facts known for each host
+          template:
+            dest: "/home/ubuntu/host-info.{{ inventory_hostname }}.yaml"
+            src: host-info.j2
+
+        - name: send job
+          shell: ./send.sh
+
+        - name: Return log URL
+          delegate_to: localhost
+          zuul_return:
+            data:
+              zuul:
+                log_url: https://qapi.xfarm.jp/neshiki/{{ zuul_change }}/{{ zuul_patchset }}/{{ test_date }}
