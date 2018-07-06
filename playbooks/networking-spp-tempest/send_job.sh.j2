@@ -1,0 +1,137 @@
+#!/bin/bash -x
+
+# Define constants
+HOME_DIR=/home/ubuntu #VM of nodepool
+source $HOME_DIR/env_info
+
+# Set environment values
+ZUUL_CHANGE={{ zuul_change }}
+ZUUL_PATCHSET={{ zuul_patchset }}
+CHANGE_DIR=$HOME_DIR/ci-logs/$ZUUL_CHANGE
+PATCHSET_DIR=$CHANGE_DIR/$ZUUL_PATCHSET
+DATE={{ test_date }}
+DATE_DIR=$PATCHSET_DIR/$DATE/{{ inventory_hostname }}/
+
+# Mount nfs and make log directory
+mkdir $HOME_DIR/ci-logs
+sudo apt-get install -y nfs-common
+sudo mount -t nfs $NFS_SERVER_IP:$NFS_DIR $HOME_DIR/ci-logs
+RET=`echo $?`
+if [ $RET -ne 0 ];
+then
+    exit 1
+fi
+mkdir -p $DATE_DIR
+
+# Get openstack logs
+DEVSTACK_UNITS=`sudo systemctl list-units|grep "devstack@"|sed -e "s/●//"|awk '{ print $1 }'`
+for UNIT in $DEVSTACK_UNITS;
+do
+    UNIT_NAME=`echo $UNIT|sed -e "s/devstack@//"|sed -e "s/.service//"`
+    journalctl --no-pager --unit $UNIT > $DATE_DIR/$UNIT_NAME.log
+done
+
+# Copy other logs
+sudo cp -p /var/log/syslog $DATE_DIR
+sudo gzip $DATE_DIR/syslog
+cp -p $HOME_DIR/devstack/local.conf $DATE_DIR
+cp -p /opt/stack/logs/stack.sh.log $DATE_DIR
+cp -p $HOME_DIR/host-info.{{ inventory_hostname }}.yaml $DATE_DIR
+if [ '{{ hostvars[inventory_hostname]['nodetype'] }}' = 'ctrl' ];
+then
+    # controller node
+    sudo cp -r /var/log/apache $DATE_DIR/
+    sudo cp -p /opt/stack/tempest/tempest.log $DATE_DIR/
+    sudo cp -p /opt/stack/tempest/results.html $DATE_DIR/testr_results.html
+    sudo gzip $DATE_DIR/testr_results.html
+else
+    # compute node
+    journalctl --no-pager --unit spp_primary.service > $DATE_DIR/spp_primary.log
+    journalctl --no-pager --unit spp_vf-1.service > $DATE_DIR/spp_vf-1.log
+    journalctl --no-pager --unit spp_vf-2.service > $DATE_DIR/spp_vf-2.log
+fi
+
+# Copy settings
+mkdir -p $DATE_DIR/etc
+if [ '{{ hostvars[inventory_hostname]['nodetype'] }}' = 'ctrl' ];
+then
+    # controller node
+    sudo cp -r /etc/apache2 $DATE_DIR/etc
+    sudo cp -r /etc/nova $DATE_DIR/etc
+    sudo cp -r /etc/neutron $DATE_DIR/etc
+    sudo cp -r /etc/glance $DATE_DIR/etc
+else
+    # compute node
+    sudo cp -r /etc/nova $DATE_DIR/etc
+    sudo cp -r /etc/neutron $DATE_DIR/etc
+fi
+
+# Get environment information
+ENVFILE=$DATE_DIR/environment-info.txt
+echo "Host & kernel" >> $ENVFILE
+echo "=============" >> $ENVFILE
+sudo uname -a >> $ENVFILE
+echo "" >> $ENVFILE
+echo "OS information" >> $ENVFILE
+echo "==============" >> $ENVFILE
+cat /etc/lsb-release >> $ENVFILE
+echo "" >> $ENVFILE
+echo "Network interface addresses" >> $ENVFILE
+echo "===========================" >> $ENVFILE
+sudo ip addr >> $ENVFILE
+echo "" >> $ENVFILE
+echo "Network routing tables v4" >> $ENVFILE
+echo "=========================" >> $ENVFILE
+sudo ip -4 route >> $ENVFILE
+echo "" >> $ENVFILE
+echo "Network routing tables v6" >> $ENVFILE
+echo "=========================" >> $ENVFILE
+sudo ip -6 route >> $ENVFILE
+echo "" >> $ENVFILE
+echo "Network neighbors" >> $ENVFILE
+echo "=================" >> $ENVFILE
+sudo ip neigh >> $ENVFILE
+echo "" >> $ENVFILE
+echo "Installed packages" >> $ENVFILE
+echo "==================" >> $ENVFILE
+dpkg -l >> $ENVFILE
+echo "" >> $ENVFILE
+echo "Installed pip Packages" >> $ENVFILE
+echo "======================" >> $ENVFILE
+sudo pip freeze -l >> $ENVFILE
+
+
+# Send logs
+sudo chown -R ubuntu.ubuntu $DATE_DIR
+sudo chmod -R a+r $DATE_DIR
+ssh -i log-key -o StrictHostKeyChecking=no $LOG_SERVER_USERNAME@$LOG_SERVER_IP mkdir -p $LOG_SERVER_LOG_ROOT_DIR/$ZUUL_CHANGE/$ZUUL_PATCHSET/$DATE/
+scp -i log-key -r -o StrictHostKeyChecking=no $DATE_DIR $LOG_SERVER_USERNAME@$LOG_SERVER_IP:$LOG_SERVER_LOG_ROOT_DIR/$ZUUL_CHANGE/$ZUUL_PATCHSET/$DATE/
+RET1=`echo $?`
+
+# Send ansible log and tempest log
+RET2=0
+if [ '{{ hostvars[inventory_hostname]['nodetype'] }}' = 'ctrl' ];
+then
+  cp -p ~/job-output.txt $PATCHSET_DIR/$DATE/
+  scp -i log-key -o StrictHostKeyChecking=no ~/job-output.txt $LOG_SERVER_USERNAME@$LOG_SERVER_IP:$LOG_SERVER_LOG_ROOT_DIR/$ZUUL_CHANGE/$ZUUL_PATCHSET/$DATE/job-output.txt
+  RET2=`echo $?`
+fi
+
+# Send console log
+gzip $HOME_DIR/console.log -c > $HOME_DIR/console.log.gz
+cp -p $HOME_DIR/console.log.gz $DATE_DIR
+scp -i log-key -r -o StrictHostKeyChecking=no $HOME_DIR/console.log.gz $LOG_SERVER_USERNAME@$LOG_SERVER_IP:$LOG_SERVER_LOG_ROOT_DIR/$ZUUL_CHANGE/$ZUUL_PATCHSET/$DATE/{{ inventory_hostname }}/
+RET3=`echo $?`
+
+# Confirm the result of seinding logs
+RET=`expr $RET1 + $RET2 + $RET3`
+if [ $RET -eq 0 ];
+then
+    echo "Successfully sent logs." > $DATE_DIR/send_log_result
+else
+    echo "Failed to send logs." > $DATE_DIR/send_log_result
+fi
+scp -i log-key -o StrictHostKeyChecking=no $DATE_DIR/send_log_result $LOG_SERVER_USERNAME@$LOG_SERVER_IP:$LOG_SERVER_LOG_ROOT_DIR/$ZUUL_CHANGE/$ZUUL_PATCHSET/$DATE/{{ inventory_hostname }}/
+
+sudo umount $HOME_DIR/ci-logs
+exit 0
