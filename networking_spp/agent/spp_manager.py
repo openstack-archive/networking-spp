@@ -58,7 +58,7 @@ class SppConnectionManager(object):
         while True:
             conn, _ = self.pri_sock.accept()
             if self.pri_conn is not None:
-                LOG.warning("spp_primary reconnect !")
+                LOG.warning("spp_primary reconnect !!")
                 with self.pri_sem:
                     try:
                         self.pri_conn.close()
