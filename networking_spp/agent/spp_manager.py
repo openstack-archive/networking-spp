@@ -58,7 +58,7 @@ class SppConnectionManager(object):
         while True:
             conn, _ = self.pri_sock.accept()
             if self.pri_conn is not None:
-                LOG.warning("spp_primary reconnect !")
+                LOG.warning("spp_primary reconnect !!!")
                 with self.pri_sem:
                     try:
                         self.pri_conn.close()
@@ -85,7 +85,7 @@ class SppConnectionManager(object):
             elif sec_id not in self.sec_sem:
                 LOG.error("Unknown secondary id: %d", sec_id)
             elif self.sec_conn[sec_id] is not None:
-                LOG.warning("spp_vf(%d) reconnect !", sec_id)
+                LOG.warning("spp_vf(%d) reconnect !!", sec_id)
                 with self.sec_sem[sec_id]:
                     try:
                         self.sec_conn[sec_id].close()
