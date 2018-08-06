@@ -159,10 +159,31 @@ Note that it is a fragment extracted only for networking-spp::
   # needed for DPDK (e.g. SSE instruction).
   cpu_mode = host-passthrough
 
+Note that dpdk ports should be down before running stack.sh.
+You can down ports by the following command::
+
+  $ sudo ip link set down phys1
+  $ sudo ip link set down phys2
+
 Post Work
 ---------
 
 There are some tasks required after running devstack.
+
+
+Note: using kvm instance for compute node
+-----------------------------------------
+
+When using a kvm instance for the compute node, you should note
+the following points.
+
+* You can't use virtio for the interface of the kvm instance. Please use
+  other interface models. e.x. e1000
+* When creating a VLAN network with spp, ovs can not be used for the interface
+  of the kvm instance. Please use linuxbridge.
+* When creating a kvm instance by openstack nova, you should disable the
+  security group on the port of the instance.
+
 
 Suppression of apparmor
 +++++++++++++++++++++++
