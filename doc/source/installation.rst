@@ -49,6 +49,12 @@ Compute node
 
 In compute node, there are some tasks to do before executing devstack.
 
+If you want to use KVM instances for the compute nodes which SPP runs for the
+purpose of constructing CI/development testing environment, you should note
+the following section.
+
+* :ref:`using_kvm_instance_for_compute_node`
+
 Preliminary design
 ------------------
 
@@ -159,10 +165,16 @@ Note that it is a fragment extracted only for networking-spp::
   # needed for DPDK (e.g. SSE instruction).
   cpu_mode = host-passthrough
 
+Note that DPDK ports should be down before running stack.sh.
+You can down ports by the following command::
+
+  $ sudo ip link set down <interface name>
+
 Post Work
 ---------
 
 There are some tasks required after running devstack.
+
 
 Suppression of apparmor
 +++++++++++++++++++++++
@@ -198,3 +210,15 @@ Note: rebooting compute node
 
 When rebooting compute node, you need to execute unstack.sh before shutting down
 and execute stack.sh after rebooting.
+
+
+.. _using_kvm_instance_for_compute_node:
+
+Note: using KVM instance for compute node
+-----------------------------------------
+
+* Our devstack script doesn't support virtio for the interface of the virtual
+  compute nodes of KVM instances. Please use other interface models. e.g. e1000
+* If the virtual compute nodes are also created by OpenStack, remember to
+  disable the security group on the compute nodes' ports to disable the arp/ip
+  spoofing.
