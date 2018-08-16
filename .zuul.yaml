@@ -26,8 +26,3 @@
       compute:
         nodetype: "compute"
     voting: false
-
-- project:
-    check:
-      jobs:
-        - networking-spp-tempest-test
