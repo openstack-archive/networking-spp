@@ -28,7 +28,6 @@
     voting: false
 
 - project:
-    name: openstack/networking-spp
     check:
       jobs:
         - networking-spp-tempest-test
