@@ -113,6 +113,10 @@ See installation_.
 
 .. _installation: doc/source/installation.rst
 
+For using the networking-spp tempest plugin, also see using_tempest_plugin_.
+
+.. _using_tempest_plugin: doc/source/using-tempest-plugin.rst
+
 Usage
 =====
 

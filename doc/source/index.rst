@@ -17,6 +17,7 @@ Contents:
    installation
    devstack
    usage
+   using-tempest-plugin
 
 Indices and tables
 ==================
