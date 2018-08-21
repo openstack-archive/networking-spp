@@ -1,0 +1,9 @@
+Code-Review+1: Itsuro Oda <oda@valinux.co.jp>
+Code-Review+2: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Workflow+1: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Tue, 21 Aug 2018 08:17:39 +0000
+Reviewed-on: https://review.openstack.org/589114
+Project: openstack/networking-spp
+Branch: refs/heads/master
