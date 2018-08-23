@@ -1,0 +1,9 @@
+Code-Review+1: Rikimaru Honjo <honjo.rikimaru@po.ntt-tx.co.jp>
+Code-Review+2: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Workflow+1: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Thu, 23 Aug 2018 11:22:06 +0000
+Reviewed-on: https://review.openstack.org/592656
+Project: openstack/networking-spp
+Branch: refs/heads/master
