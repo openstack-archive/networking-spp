@@ -109,7 +109,7 @@ core mask of spp_vf
   In the core mask of spp_vf, in addition to the above occupancy,
   specify what to use as the master core.
 
-Configration example
+Configuration example
 ++++++++++++++++++++
 
 * Both spp_primary and spp_vfs share the master core and use core id 1.
