@@ -21,7 +21,7 @@ and the physical NIC are connected by vhostuser via SPP, and are
 transfrerred at high speed without going through the kernel or the virtual
 switch.
 
-.. _SPP: https://github.com/ntt-ns/Soft-Patch-Panel
+.. _SPP: http://git.dpdk.org/apps/spp/
 
 ::
 
@@ -109,14 +109,14 @@ Installation
 
 It supports installation with devstack.
 
-See installation_.
+See the `installation document`_.
 
-.. _installation: doc/source/installation.rst
+.. _`installation document`: doc/source/installation.rst
 
 Usage
 =====
 
-See usage_.
+See the `usage document`_.
 
-.. _usage: doc/source/usage.rst
+.. _`usage document`: doc/source/usage.rst
 
