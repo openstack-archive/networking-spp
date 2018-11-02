@@ -20,10 +20,10 @@ from neutron.conf.agent import common
 
 
 spp_opts = [
-    cfg.IntOpt('primary_sock_port', default=5555,
-               help=_("SPP primary socket port number")),
-    cfg.IntOpt('secondary_sock_port', default=6666,
-               help=_("SPP secondary socket port number")),
+    cfg.StrOpt('api_ip_addr', default='127.0.0.1',
+               help=_("Spp-ctl bind ip address")),
+    cfg.IntOpt('api_port', default=7777,
+               help=_("Spp-ctl web api port number")),
 ]
 
 

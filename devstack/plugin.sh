@@ -5,6 +5,8 @@ function spp_pre_install(){
         if is_ubuntu; then
             echo "TODO: install packages necessary for DPDK build"
             sudo apt-get install -y libnuma-dev
+            sudo apt-get install -y python3
+            sudo apt-get install -y python3-pip
             #NOTE(oda): it is environment dependent.
         fi
         #TODO: other OS support (ex. CentOS)
@@ -36,6 +38,9 @@ function build_spp_dpdk(){
         sudo make
         cd ${SPP_DIR}
         sudo SPP_HOME=${SPP_DIR} RTE_TARGET=${RTE_TARGET} RTE_SDK=${RTE_SDK} make
+        # for spp-ctl
+        pip3 install -r requirements.txt
+        sudo chmod +x ${SPP_DIR}/src/spp-ctl/spp-ctl
         popd
     fi
 }
@@ -135,12 +140,8 @@ function configure_etcd() {
 }
 
 function configure_spp_agent() {
-    if [ -n "$SPP_PRIMATY_SOCK_PORT" ]; then
-        iniset /$Q_PLUGIN_CONF_FILE spp primary_sock_port $SPP_PRIMATY_SOCK_PORT
-    fi
-    if [ -n "$SPP_SECONDARY_SOCK_PORT" ]; then
-        iniset /$Q_PLUGIN_CONF_FILE spp secondary_sock_port $SPP_SECONDARY_SOCK_PORT
-    fi
+    iniset /$Q_PLUGIN_CONF_FILE spp api_ip_addr $SPP_CTL_IP_ADDR
+    iniset /$Q_PLUGIN_CONF_FILE spp api_port $SPP_API_PORT
 
     if [ -z "$SPP_HOST" ]; then
         SPP_HOST=$(hostname -s)
@@ -155,6 +156,17 @@ function unconfigure_spp_agent() {
     fi
     python $NETWORKING_SPP_DIR/devstack/spp-config-destroy.py \
         $SPP_HOST $ETCD_HOST $ETCD_PORT
+}
+
+function build_spp_ctl_service() {
+    local service="spp_ctl.service"
+    local unitfile="$SYSTEMD_DIR/$service"
+
+    CTL_CMD="$SPP_DIR/src/spp-ctl/spp-ctl -p $SPP_PRIMARY_SOCK_PORT -s $SPP_SECONDARY_SOCK_PORT -a $SPP_API_PORT -b $SPP_CTL_IP_ADDR"
+
+    iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
+    iniset -sudo $unitfile "Service" "User" "$STACK_USER"
+    iniset -sudo $unitfile "Service" "ExecStart" "$CTL_CMD"
 }
 
 function build_spp_primary_service() {
@@ -176,7 +188,7 @@ function build_spp_primary_service() {
     NUM_RING=$(( $NUM_VHOST * 2 ))
 
     PRIMARY_BIN=$SPP_DIR/src/primary/x86_64-native-linuxapp-gcc/spp_primary
-    PRIMARY_CMD="$PRIMARY_BIN -c $SPP_PRIMARY_CORE_MASK -n 4 --socket-mem $SPP_PRIMARY_SOCKET_MEM --huge-dir $SPP_HUGEPAGE_MOUNT --proc-type primary -- -p $PORT_MASK -n $NUM_RING -s 127.0.0.1:$SPP_PRIMATY_SOCK_PORT"
+    PRIMARY_CMD="$PRIMARY_BIN -c $SPP_PRIMARY_CORE_MASK -n 4 --socket-mem $SPP_PRIMARY_SOCKET_MEM --huge-dir $SPP_HUGEPAGE_MOUNT --proc-type primary -- -p $PORT_MASK -n $NUM_RING -s $SPP_CTL_IP_ADDR:$SPP_PRIMARY_SOCK_PORT"
 
     iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
     iniset -sudo $unitfile "Service" "User" "root"
@@ -190,7 +202,7 @@ function build_spp_vf_service() {
     local unitfile="$SYSTEMD_DIR/$service"
 
     SEC_BIN=$SPP_DIR/src/vf/x86_64-native-linuxapp-gcc/spp_vf
-    SEC_CMD="$SEC_BIN -c $core_mask -n 4 --proc-type secondary -- --client-id $sec_id -s 127.0.0.1:$SPP_SECONDARY_SOCK_PORT --vhost-client"
+    SEC_CMD="$SEC_BIN -c $core_mask -n 4 --proc-type secondary -- --client-id $sec_id -s $SPP_CTL_IP_ADDR:$SPP_SECONDARY_SOCK_PORT --vhost-client"
 
     iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
     iniset -sudo $unitfile "Service" "User" "root"
@@ -199,6 +211,7 @@ function build_spp_vf_service() {
 
 function build_systemd_services() {
     mkdir -p $SYSTEMD_DIR
+    build_spp_ctl_service
     build_spp_primary_service
     SEC_ID=1
     MAPPINGS=${DPDK_PORT_MAPPINGS//,/ }
@@ -217,8 +230,20 @@ function build_systemd_services() {
     done
 }
 
+function start_spp_services() {
+    NUM_SEC=0
+    MAPPINGS=${DPDK_PORT_MAPPINGS//,/ }
+    ARRAY=( $MAPPINGS )
+    for map in "${ARRAY[@]}"; do
+        NUM_SEC=$(( $NUM_SEC + 1 ))
+    done
+
+    sudo $NETWORKING_SPP_DIR/devstack/start-spp-services $NUM_SEC $SPP_CTL_IP_ADDR:$SPP_API_PORT
+}
+
 function stop_systemd_services() {
     stop_process q-spp-agt
+    $SYSTEMCTL stop spp_ctl.service
     MAPPINGS=${DPDK_PORT_MAPPINGS//,/ }
     ARRAY=( $MAPPINGS )
     for ((i=1; i<=${#ARRAY[@]}; i++)); do
@@ -266,8 +291,9 @@ if [[ "$1" == "stack" ]]; then
         extra)
             if [ "$SPP_MODE" != "controller" ]; then
                 build_systemd_services
+                # start SPP services
+                start_spp_services
                 # start spp-agent
-                # spp services will start from spp-agent.
                 run_process q-spp-agt "$SPP_AGENT_BINARY --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE"
             fi
             if [ "$SPP_MODE" == "controller" ]; then

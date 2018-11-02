@@ -18,12 +18,15 @@ spp_vf
   vhostuser is used to connect with VM. The number of vhostusers
   to allocate for each physical NIC is specified in the configuration.
 
+spp-ctl
+  It is a SPP controller with a REST like web API.
+  It maintains the connections form the SPP processes and at
+  the same time exposes the API for the user to request for the
+  SPP processes.
+
 spp-agent
-  It communicates with spp_primary and spp_vf processes and
-  set SPP according to the request from neutron-server.
-  The 'spp' script which controls spp_primary and spp_vf is provided
-  by SPP. But in the OpenStack environment spp-agent is used to
-  control spp processes instead of the 'spp' script.
+  It requests the operation of spp_vf to spp-ctl according to
+  the request from neutron-server.
 
 ::
 
@@ -39,16 +42,16 @@ spp-agent
   |          ^ |                ^ |     ^ |                     +-----------+    |
   |          | |       +--------+ |     | |                                      |
   |          | |       | +--------+     | |                                      |
-  |          | |       | |              | |                       spp-agent      |
+  |          | |       | |              | |                        spp-ctl       |
   |  spp_vf  | v       | v      spp_vf  | v                     +-----------+    |
   |     +---------------------+    +---------------------+      |           |    |
   |     | +-------+ +-------+ |    | +-------+ +-------+ |      +-----------+    |
   |     | |vhost:0| |vhost:1| |    | |vhost:2| |vhost:3| |                       |
   |     | +-------+ +-------+ |    | +-------+ +-------+ |                       |
-  |     |                     |    |                     |                       |
-  |     |   classifier/merge  |    |   classifier/merge  |                       |
-  |     +---------------------+    +---------------------+                       |
-  |              ^  |                       ^  |                                 |
+  |     |                     |    |                     |        spp-agent      |
+  |     |   classifier/merge  |    |   classifier/merge  |      +-----------+    |
+  |     +---------------------+    +---------------------+      |           |    |
+  |              ^  |                       ^  |                +-----------+    |
   |              |  |                       |  |                                 |
   |              |  v                       |  v                                 |
   |            +------+                   +------+                               |
