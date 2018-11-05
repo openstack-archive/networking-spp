@@ -1,0 +1,10 @@
+Code-Review+1: Filippo Inzaghi <zhao.daqing@99cloud.net>
+Code-Review+1: Vieri <15050873171@163.com>
+Code-Review+2: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Workflow+1: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Mon, 05 Nov 2018 05:58:12 +0000
+Reviewed-on: https://review.openstack.org/573927
+Project: openstack/networking-spp
+Branch: refs/heads/master
