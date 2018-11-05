@@ -38,7 +38,7 @@ Details will be explained separately into some categories later.
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_MODE                | compute                      | 'compute' or 'control'                    |
 +-------------------------+------------------------------+-------------------------------------------+
-| DPDK_PORT_MAPPINGS      | <must be specified>          | configration information                  |
+| DPDK_PORT_MAPPINGS      | <must be specified>          | configuration information                 |
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_PRIMARY_SOCKET_MEM  | 1024                         | --socket-mem of spp_primary               |
 +-------------------------+------------------------------+-------------------------------------------+
@@ -72,7 +72,7 @@ Required parameters for compute node
 DPDK_PORT_MAPPINGS
 ++++++++++++++++++
 
-Specify configration information for the NICs assigned for SPP.
+Specify configuration information for the NICs assigned for SPP.
 
 The format for each NIC is as follows::
 
