@@ -42,23 +42,6 @@ AGENT_TYPE_SPP = 'SPP neutron agent'
 SPP_AGENT_BINARY = 'neutron-spp-agent'
 
 
-# port name conventions
-def _nic_port(sec_id):
-    return "phy:%d" % (sec_id - 1)
-
-
-def _vhost_port(vhost_id):
-    return "vhost:%d" % vhost_id
-
-
-def _rx_ring_port(vhost_id):
-    return "ring:%d" % (vhost_id * 2)
-
-
-def _tx_ring_port(vhost_id):
-    return "ring:%d" % (vhost_id * 2 + 1)
-
-
 class Vhostuser(object):
 
     def __init__(self, vhost_id, vf):
@@ -66,6 +49,17 @@ class Vhostuser(object):
         self.vf = vf
         self.phys_net = vf.phys_net
         self.mac_address = "unuse"
+
+        # port del/add target
+        # tx/rx is component's point of view
+        #
+        # for del_vlantag
+        self.tx_port = None
+        self.tx_comp = None
+        #
+        # for add_vlantag
+        self.rx_port = None
+        self.rx_comp = None
 
 
 class SppVf(spp_api.SppVfApi):
@@ -111,30 +105,55 @@ class SppVf(spp_api.SppVfApi):
         # to output info after build to debug LOG.
         self.get_status()
 
+    def _get_vhost(self, port):
+        if_type, if_num = port.split(":")
+        if if_type != "vhost":
+            return None
+        if_num = int(if_num)
+        if if_num not in self.vhostusers:
+            self.vhostusers[if_num] = Vhostuser(if_num, self)
+        return self.vhostusers[if_num]
+
     def build_vhosts(self, components):
+        port_tx = {}
+        port_rx = {}
         for comp in components:
             for port in comp["tx_port"]:
-                if_type, if_num = port.split(":")
-                if if_type != "vhost":
-                    continue
-                if_num = int(if_num)
-                if if_num not in self.vhostusers:
-                    self.vhostusers[if_num] = Vhostuser(if_num, self)
+                port_tx[port] = comp
+            for port in comp["rx_port"]:
+                port_rx[port] = comp
+
+        for port, comp in port_tx.items():
+            vhost = self._get_vhost(port)
+            if vhost is None:
+                continue
+            if comp["type"] == "forward":
+                vhost.tx_port = comp["rx_port"][0]
+                vhost.tx_comp = port_tx[vhost.tx_port]["name"]
+            else:
+                vhost.tx_port = port
+                vhost.tx_comp = comp["name"]
+
+        for port, comp in port_rx.items():
+            vhost = self._get_vhost(port)
+            if vhost is None:
+                continue
+            vhost.rx_port = port
+            vhost.rx_comp = comp["name"]
 
     def init_vhost_mac_address(self):
         table = self.info.get("classifier_table", [])
-        for entry in table:
-            if (entry["type"] in ["mac", "vlan"] and
-                    entry["port"].startswith("ring:")):
-                ring_id = int(entry["port"][len("ring:"):])
-                vhost_id = ring_id // 2
-                mac_string = entry["value"]
-                if entry["type"] == "vlan":
-                    _vlan_id, mac_string = mac_string.split('/')
-                # match format of neutron standard
-                mac = str(netaddr.EUI(mac_string,
-                                      dialect=netaddr.mac_unix_expanded))
-                self.vhostusers[vhost_id].mac_address = mac
+        for vhost in self.vhostusers.values():
+            for entry in table:
+                if (entry["type"] in ["mac", "vlan"] and
+                        entry["port"] == vhost.tx_port):
+                    mac_string = entry["value"]
+                    if entry["type"] == "vlan":
+                        _vlan_id, mac_string = mac_string.split('/')
+                    # match format of neutron standard
+                    mac = str(netaddr.EUI(mac_string,
+                                          dialect=netaddr.mac_unix_expanded))
+                    vhost.mac_address = mac
 
 
 class SppAgent(object):
@@ -147,22 +166,17 @@ class SppAgent(object):
         self.api_port = self.conf.spp.api_port
         self.etcd = etcd_client.EtcdClient(self.conf.spp.etcd_host,
                                            self.conf.spp.etcd_port)
-        self.dpdk_port_mappings = self._get_dpdk_port_mappings()
+        self.spp_configuration = self.get_spp_configuration()
 
         self.vhostusers = {}
         sec_id = 1
-        vhost_id = 0
-        for mapping in self.dpdk_port_mappings:
-            num_vhost = mapping['num_vhost']
+        for mapping in self.spp_configuration['vf']:
             phys_net = mapping['physical_network']
-            cores = self._get_cores(mapping['core_mask'])
-            components = self._conf_components(sec_id, vhost_id, num_vhost,
-                                               cores)
+            components = mapping['components']
             vf = SppVf(sec_id, phys_net, self.api_ip_addr, self.api_port)
             vf.init_components(components)
             self.vhostusers.update(vf.vhostusers)
             sec_id += 1
-            vhost_id += num_vhost
 
         self.plug_sem = eventlet.semaphore.Semaphore()
         self.shutdown_sem = eventlet.semaphore.Semaphore(value=0)
@@ -173,51 +187,11 @@ class SppAgent(object):
         self.recover()
         self.start_report()
 
-    def _get_dpdk_port_mappings(self):
+    def get_spp_configuration(self):
         value = self.etcd.get(etcd_key.configuration_key(self.host))
         mappings = json.loads(value)
-        LOG.info("DPDK Port mappings: %s", mappings)
+        LOG.info("SPP configuration: %s", mappings)
         return mappings
-
-    def _get_cores(self, core_mask):
-        mask = int(core_mask, base=16)
-        cores = []
-        for i in range(32):
-            if mask & (1 << i):
-                cores.append(i)
-        cores.pop(0)
-        return cores
-
-    def _conf_components(self, sec_id, start_vhost_id, num_vhost, cores):
-        components = []
-        tx_port = []
-        rx_port = []
-        for vhost_id in range(start_vhost_id, start_vhost_id + num_vhost):
-            components.append({"core": cores.pop(0),
-                               "type": "forward",
-                               "name": "forward_%d_tx" % vhost_id,
-                               "rx_port": [_rx_ring_port(vhost_id)],
-                               "tx_port": [_vhost_port(vhost_id)]})
-            components.append({"core": cores.pop(0),
-                               "type": "forward",
-                               "name": "forward_%d_rx" % vhost_id,
-                               "rx_port": [_vhost_port(vhost_id)],
-                               "tx_port": [_tx_ring_port(vhost_id)]})
-
-            tx_port.append(_rx_ring_port(vhost_id))
-            rx_port.append(_tx_ring_port(vhost_id))
-
-        components.append({"core": cores.pop(0),
-                           "type": "classifier_mac",
-                           "name": "classifier",
-                           "rx_port": [_nic_port(sec_id)],
-                           "tx_port": tx_port})
-        components.append({"core": cores.pop(0),
-                           "type": "merge",
-                           "name": "merger",
-                           "rx_port": rx_port,
-                           "tx_port": [_nic_port(sec_id)]})
-        return components
 
     def set_classifier_table(self, vhost_id, mac_address, vlan_id):
         vhost = self.vhostusers[vhost_id]
@@ -227,18 +201,16 @@ class SppAgent(object):
             return
 
         vf = vhost.vf
-        rx_port = _rx_ring_port(vhost_id)
         if vlan_id is None:
-            vf.set_classifier_table(mac_address, rx_port)
+            vf.set_classifier_table(mac_address, vhost.tx_port)
         else:
-            forwarder = "forward_%d_rx" % vhost_id
-            vf.port_del(_vhost_port(vhost_id), "rx", forwarder)
-            vf.port_add(_vhost_port(vhost_id), "rx", forwarder,
+            vf.port_del(vhost.rx_port, "rx", vhost.rx_comp)
+            vf.port_add(vhost.rx_port, "rx", vhost.rx_comp,
                         "add_vlantag", vlan_id)
-            vf.port_del(rx_port, "tx", "classifier")
-            vf.port_add(rx_port, "tx", "classifier", "del_vlantag")
-            vf.set_classifier_table_with_vlan(mac_address, rx_port, vlan_id)
-
+            vf.port_del(vhost.tx_port, "tx", vhost.tx_comp)
+            vf.port_add(vhost.tx_port, "tx", vhost.tx_comp, "del_vlantag")
+            vf.set_classifier_table_with_vlan(mac_address, vhost.tx_port,
+                                              vlan_id)
         vhost.mac_address = mac_address
 
     def clear_classifier_table(self, vhost_id, mac_address, vlan_id):
@@ -248,17 +220,15 @@ class SppAgent(object):
             return
 
         vf = vhost.vf
-        rx_port = _rx_ring_port(vhost_id)
         if vlan_id is None:
-            vf.clear_classifier_table(mac_address, rx_port)
+            vf.clear_classifier_table(mac_address, vhost.tx_port)
         else:
-            forwarder = "forward_%d_rx" % vhost_id
-            vf.port_del(_vhost_port(vhost_id), "rx", forwarder)
-            vf.port_add(_vhost_port(vhost_id), "rx", forwarder)
-            vf.port_del(rx_port, "tx", "classifier")
-            vf.port_add(rx_port, "tx", "classifier")
-            vf.clear_classifier_table_with_vlan(mac_address, rx_port, vlan_id)
-
+            vf.port_del(vhost.rx_port, "rx", vhost.rx_comp)
+            vf.port_add(vhost.rx_port, "rx", vhost.rx_comp)
+            vf.port_del(vhost.tx_port, "tx", vhost.tx_comp)
+            vf.port_add(vhost.tx_port, "tx", vhost.tx_comp)
+            vf.clear_classifier_table_with_vlan(mac_address, vhost.tx_port,
+                                                vlan_id)
         vhost.mac_address = "unuse"
 
     def _plug_port(self, port_id, vhost_id, mac_address, vlan_id):

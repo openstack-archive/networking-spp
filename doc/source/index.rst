@@ -17,6 +17,7 @@ Contents:
    installation
    devstack
    usage
+   customization
 
 Indices and tables
 ==================

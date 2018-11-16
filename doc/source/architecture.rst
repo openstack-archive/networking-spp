@@ -126,6 +126,15 @@ Configuration example
   SPP_PRIMARY_CORE_MASK=0x2
   DPDK_PORT_MAPPINGS=00:04.0#phys1#2#0xfe,00:05.0#phys2#2#xfc02
 
+Customization of component construction
+---------------------------------------
+
+There is a way to construct components as other than default
+explained above.
+
+See :doc:`Customization of the components construction <customization>`
+for details.
+
 Communication between server and agent
 ======================================
 
@@ -175,6 +184,11 @@ information for each NIC assigned to SPP.
 The order of dict is the port order of DPDK.
 The key and value of dict are as follows.
 
+vf
+  array of spp_vf info
+
+spp_vf info is as follows.
+
 pci_address
   PCI address of the NIC
 
@@ -187,9 +201,184 @@ num_vhost
 core_mask
   core_mask of spp_vf for the NIC
 
-example::
+components
+  array of component info
 
-  [{"num_vhost": 2, "pci_address": "00:04.0", "physical_network": "phys1", "core_mask": "0xfe"}, {"num_vhost": 2, "pci_address": "00:05.0", "physical_network": "phys2", "core_mask": "0xfc02"}]
+component info is as follows.
+
+core
+  core id
+
+type
+  component type
+
+name
+  component name
+
+tx_port
+  array of tx ports
+
+rx_port
+  array of rx ports
+
+example(It is shaping for ease of viewing)::
+
+  {
+    "vf": [
+        {
+            "components": [
+                {
+                    "core": 2,
+                    "name": "forward_0_tx",
+                    "rx_port": [
+                        "ring:0"
+                    ],
+                    "tx_port": [
+                        "vhost:0"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 3,
+                    "name": "forward_0_rx",
+                    "rx_port": [
+                        "vhost:0"
+                    ],
+                    "tx_port": [
+                        "ring:1"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 4,
+                    "name": "forward_1_tx",
+                    "rx_port": [
+                        "ring:2"
+                    ],
+                    "tx_port": [
+                        "vhost:1"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 5,
+                    "name": "forward_1_rx",
+                    "rx_port": [
+                        "vhost:1"
+                    ],
+                    "tx_port": [
+                        "ring:3"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 6,
+                    "name": "classifier",
+                    "rx_port": [
+                        "phy:0"
+                    ],
+                    "tx_port": [
+                        "ring:0",
+                        "ring:2"
+                    ],
+                    "type": "classifier_mac"
+                },
+                {
+                    "core": 7,
+                    "name": "merger",
+                    "rx_port": [
+                        "ring:1",
+                        "ring:3"
+                    ],
+                    "tx_port": [
+                        "phy:0"
+                    ],
+                    "type": "merge"
+                }
+            ],
+            "core_mask": "0xfe",
+            "num_vhost": 2,
+            "pci_address": "00:04.0",
+            "physical_network": "phys1"
+        },
+        {
+            "components": [
+                {
+                    "core": 10,
+                    "name": "forward_2_tx",
+                    "rx_port": [
+                        "ring:4"
+                    ],
+                    "tx_port": [
+                        "vhost:2"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 11,
+                    "name": "forward_2_rx",
+                    "rx_port": [
+                        "vhost:2"
+                    ],
+                    "tx_port": [
+                        "ring:5"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 12,
+                    "name": "forward_3_tx",
+                    "rx_port": [
+                        "ring:6"
+                    ],
+                    "tx_port": [
+                        "vhost:3"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 13,
+                    "name": "forward_3_rx",
+                    "rx_port": [
+                        "vhost:3"
+                    ],
+                    "tx_port": [
+                        "ring:7"
+                    ],
+                    "type": "forward"
+                },
+                {
+                    "core": 14,
+                    "name": "classifier",
+                    "rx_port": [
+                        "phy:1"
+                    ],
+                    "tx_port": [
+                        "ring:4",
+                        "ring:6"
+                    ],
+                    "type": "classifier_mac"
+                },
+                {
+                    "core": 15,
+                    "name": "merger",
+                    "rx_port": [
+                        "ring:5",
+                        "ring:7"
+                    ],
+                    "tx_port": [
+                        "phy:1"
+                    ],
+                    "type": "merge"
+                }
+            ],
+            "core_mask": "0xfc02",
+            "num_vhost": 2,
+            "pci_address": "00:05.0",
+            "physical_network": "phys2"
+        }
+    ]
+  }
 
 /spp/openstack/vhost/<host>/<phys>/<vhost_id>
 +++++++++++++++++++++++++++++++++++++++++++++
@@ -234,7 +423,7 @@ example(just after construction)::
 
   $ ETCDCTL_API=3 ~/devstack/files/etcd-v3.1.7-linux-amd64/etcdctl --endpoints 192.168.122.80:2379 get --prefix /spp
   /spp/openstack/configuration/spp4
-  [{"num_vhost": 2, "core_mask": "0xfe", "pci_address": "00:04.0", "physical_network": "phys1"}, {"num_vhost": 2, "core_mask": "0xfc02", "pci_address": "00:05.0", "physical_network": "phys2"}]
+  {"vf": [{"num_vhost": 2, "physical_network": "phys1", ...snipped...}, {"num_vhost": 2, "physical_network": "phys2", ...snipped...}]}
   /spp/openstack/vhost/spp4/phys1/0
   None
   /spp/openstack/vhost/spp4/phys1/1
@@ -252,7 +441,7 @@ example(one vhostuser using)::
   /spp/openstack/bind_port/spp4/6160c9da-b2d5-4236-8413-7d646e5c0ae2
   {"vhost_id": 0, "mac_address": "fa:16:3e:a0:da:db"}
   /spp/openstack/configuration/spp4
-  [{"num_vhost": 2, "core_mask": "0xfe", "pci_address": "00:04.0", "physical_network": "phys1"}, {"num_vhost": 2, "core_mask": "0xfc02", "pci_address": "00:05.0", "physical_network": "phys2"}]
+  {"vf": [{"num_vhost": 2, "physical_network": "phys1", ...snipped...}, {"num_vhost": 2, "physical_network": "phys2", ...snipped...}]}
   /spp/openstack/port_status/spp4/6160c9da-b2d5-4236-8413-7d646e5c0ae2
   up
   /spp/openstack/vhost/spp4/phys1/0
