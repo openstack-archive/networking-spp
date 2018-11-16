@@ -84,7 +84,7 @@ class SppMechanismDriver(api.MechanismDriver):
             # spp is not configured on the host
             return
         agent_conf = json.loads(agent_conf)
-        phys_nets = [conf['physical_network'] for conf in agent_conf]
+        phys_nets = [conf['physical_network'] for conf in agent_conf['vf']]
         if not self._spp_agent_alive(context):
             LOG.warn("spp_agent of %s down", context.host)
             return

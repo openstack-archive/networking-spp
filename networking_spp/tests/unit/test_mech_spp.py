@@ -41,7 +41,7 @@ class SppMechanismTestCase(base.BaseTestCase):
     @mock.patch('networking_spp.mech_driver.mech_spp.'
                 'LOG.warn')
     def test_bind_port_spp_agent_alive(self, mocked_warn):
-        agent_conf = [{'physical_network': 'phy_net'}]
+        agent_conf = {'vf': [{'physical_network': 'phy_net'}]}
         self.driver.etcd.get.return_value = json.dumps(agent_conf)
         self.context.host_agents.return_value = []
         self.driver.bind_port(self.context)
@@ -54,7 +54,7 @@ class SppMechanismTestCase(base.BaseTestCase):
     def test_bind_port_call_try_to_bind(self, mocked_try_to_bind,
                                         mocked_spp_agent_alive):
         # conditions to call _try_to_bind
-        agent_conf = [{'physical_network': 'phy_net'}]
+        agent_conf = {'vf': [{'physical_network': 'phy_net'}]}
         self.driver.etcd.get.return_value = json.dumps(agent_conf)
         mocked_spp_agent_alive.return_value = True
         segment = {api.NETWORK_TYPE: constants.TYPE_FLAT,
@@ -70,7 +70,7 @@ class SppMechanismTestCase(base.BaseTestCase):
     def test_bind_port_call_try_to_bind_vlan(self, mocked_try_to_bind,
                                              mocked_spp_agent_alive):
         # conditions to call _try_to_bind
-        agent_conf = [{'physical_network': 'phy_net'}]
+        agent_conf = {'vf': [{'physical_network': 'phy_net'}]}
         self.driver.etcd.get.return_value = json.dumps(agent_conf)
         mocked_spp_agent_alive.return_value = True
         segment = {api.NETWORK_TYPE: constants.TYPE_VLAN,
@@ -86,7 +86,7 @@ class SppMechanismTestCase(base.BaseTestCase):
     def test_bind_port_not_call_try_to_bind(self, mocked_try_to_bind,
                                             mocked_spp_agent_alive):
         # conditions not to call _try_to_bind
-        agent_conf = []
+        agent_conf = {'vf': []}
         self.driver.etcd.get.return_value = json.dumps(agent_conf)
         mocked_spp_agent_alive.return_value = True
         segment = {api.NETWORK_TYPE: 'value', api.PHYSICAL_NETWORK: 'value'}

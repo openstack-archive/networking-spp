@@ -15,42 +15,9 @@
 
 import json
 import mock
-import random
 
 from networking_spp.agent import spp_agent
 from neutron.tests import base
-
-
-class VhostTestCase(base.BaseTestCase):
-
-    def setUp(self):
-        super(VhostTestCase, self).setUp()
-        self.vhost_id = random.randint(1, 99)
-        self.sec_id = random.randint(1, 99)
-
-    def test_nic_port_fun(self):
-        result = "phy:%d" % (self.sec_id - 1)
-        self.assertEqual(spp_agent._nic_port(self.sec_id), result)
-
-    def test_vhost_port_fun(self):
-        result = "vhost:%d" % self.vhost_id
-        self.assertEqual(spp_agent._vhost_port(self.vhost_id), result)
-
-    def test_rx_ring_port_fun(self):
-        result = "ring:%d" % (self.vhost_id * 2)
-        self.assertEqual(spp_agent._rx_ring_port(self.vhost_id), result)
-
-    def test_tx_ring_port_fun(self):
-        result = "ring:%d" % (self.vhost_id * 2 + 1)
-        self.assertEqual(spp_agent._tx_ring_port(self.vhost_id), result)
-
-    def test_vhostuser(self):
-        vf = spp_agent.SppVf(self.sec_id, 'py_net', '127.0.0.1', 7777)
-        vhostuser = spp_agent.Vhostuser(self.vhost_id, vf)
-        self.assertEqual(vhostuser.vhost_id, self.vhost_id)
-        self.assertEqual(vhostuser.vf, vf)
-        self.assertEqual(vhostuser.phys_net, 'py_net')
-        self.assertEqual(vhostuser.mac_address, 'unuse')
 
 
 class SppVfTestCase(base.BaseTestCase):
@@ -94,22 +61,72 @@ class SppVfTestCase(base.BaseTestCase):
         self.assertEqual(m_mk_comp.call_count, 1)
         self.assertEqual(m_port_add.call_count, 2)
 
-    def test_build_vhosts(self):
-        components = [{"tx_port": ["vhost:3"]}]
+    def test_get_vhost_con1(self):
+        ret = self.spp_vf._get_vhost("ring:0")
+        self.assertEqual(ret, None)
+
+    def test_get_vhost_con2(self):
+        ret = self.spp_vf._get_vhost("vhost:1")
+        self.assertEqual(ret, self.spp_vf.vhostusers[1])
+
+    def test_get_vhost_con3(self):
+        vhost = spp_agent.Vhostuser(2, self.spp_vf)
+        self.spp_vf.vhostusers[2] = vhost
+        ret = self.spp_vf._get_vhost("vhost:2")
+        self.assertEqual(ret, vhost)
+
+    def test_build_vhosts_con1(self):
+        components = [{"type": "forward",
+                       "name": "fw0",
+                       "rx_port": ["ring:0"],
+                       "tx_port": ["vhost:0"]},
+                      {"type": "forward",
+                       "name": "fw1",
+                       "rx_port": ["vhost:0"],
+                       "tx_port": ["ring:1"]},
+                      {"type": "classifier_mac",
+                       "name": "cls",
+                       "rx_port": ["phy:0"],
+                       "tx_port": ["ring:0"]},
+                      {"type": "merge",
+                       "name": "merge",
+                       "rx_port": ["ring:1"],
+                       "tx_port": ["phy:0"]}]
         self.spp_vf.build_vhosts(components)
 
-        self.assertEqual(self.spp_vf.vhostusers[3].vhost_id, 3)
+        vhost = self.spp_vf.vhostusers[0]
+        self.assertEqual(vhost.tx_port, "ring:0")
+        self.assertEqual(vhost.tx_comp, "cls")
+        self.assertEqual(vhost.rx_port, "vhost:0")
+        self.assertEqual(vhost.rx_comp, "fw1")
+
+    def test_build_vhosts_con2(self):
+        components = [{"type": "classifier_mac",
+                       "name": "cls",
+                       "rx_port": ["phy:0"],
+                       "tx_port": ["vhost:1"]},
+                      {"type": "merge",
+                       "name": "merge",
+                       "rx_port": ["vhost:1"],
+                       "tx_port": ["phy:0"]}]
+        self.spp_vf.build_vhosts(components)
+
+        vhost = self.spp_vf.vhostusers[1]
+        self.assertEqual(vhost.tx_port, "vhost:1")
+        self.assertEqual(vhost.tx_comp, "cls")
+        self.assertEqual(vhost.rx_port, "vhost:1")
+        self.assertEqual(vhost.rx_comp, "merge")
 
     def test_init_vhost_mac_address_con1(self):
         info = {"classifier_table": [{"type": "mac",
                                       "port": "ring:12",
                                       "value": "12:ab:34:cd:56:ef"}]}
         self.spp_vf.info = info
-        vhost_id = 12 // 2
-        self.spp_vf.vhostusers[vhost_id] = mock.Mock()
+        self.spp_vf.vhostusers[0] = mock.Mock()
+        self.spp_vf.vhostusers[0].tx_port = "ring:12"
         self.spp_vf.init_vhost_mac_address()
 
-        self.assertEqual(self.spp_vf.vhostusers[vhost_id].mac_address,
+        self.assertEqual(self.spp_vf.vhostusers[0].mac_address,
                          '12:ab:34:cd:56:ef')
 
     def test_init_vhost_mac_address_con2(self):
@@ -117,11 +134,11 @@ class SppVfTestCase(base.BaseTestCase):
                                       "port": "ring:12",
                                       "value": "100/12:ab:34:cd:56:ef"}]}
         self.spp_vf.info = info
-        vhost_id = 12 // 2
-        self.spp_vf.vhostusers[vhost_id] = mock.Mock()
+        self.spp_vf.vhostusers[0] = mock.Mock()
+        self.spp_vf.vhostusers[0].tx_port = "ring:12"
         self.spp_vf.init_vhost_mac_address()
 
-        self.assertEqual(self.spp_vf.vhostusers[vhost_id].mac_address,
+        self.assertEqual(self.spp_vf.vhostusers[0].mac_address,
                          '12:ab:34:cd:56:ef')
 
 
@@ -135,75 +152,24 @@ class SppAgentTestCase(base.BaseTestCase):
         self.agent = self._get_agent()
 
     @mock.patch('networking_spp.agent.spp_agent.SppAgent.'
-                '_get_dpdk_port_mappings')
-    @mock.patch('networking_spp.agent.spp_agent.SppAgent._conf_components')
+                'get_spp_configuration')
     @mock.patch('networking_spp.agent.spp_agent.SppVf')
     @mock.patch('networking_spp.common.etcd_client.EtcdClient')
     @mock.patch('networking_spp.agent.spp_agent.SppAgent._report_state')
     @mock.patch('networking_spp.agent.spp_agent.eventlet')
-    def _get_agent(self, a, b, c, d, e, f):
+    def _get_agent(self, a, b, c, d, e):
         return spp_agent.SppAgent(self.conf)
 
-    def test_get_dpdk_port_mappings(self):
+    def test_get_spp_configuration(self):
         # conditions
         self.agent.host = 'host1'
         key = '/spp/openstack/configuration/' + self.agent.host
         value = {key: '1'}
         self.agent.etcd.get.return_value = json.dumps(value)
-        ret = self.agent._get_dpdk_port_mappings()
+        ret = self.agent.get_spp_configuration()
 
         self.agent.etcd.get.assert_called_with(key)
         self.assertEqual(ret, value)
-
-    def test_conf_components(self):
-        # conditions
-        num_vhost = 3
-        res = [{'name': 'forward_2_tx',
-                'core': 2,
-                'rx_port': ['ring:4'],
-                'tx_port': ['vhost:2'],
-                'type': 'forward'},
-               {'name': 'forward_2_rx',
-                'core': 3,
-                'rx_port': ['vhost:2'],
-                'tx_port': ['ring:5'],
-                'type': 'forward'},
-               {'name': 'forward_3_tx',
-                'core': 4,
-                'rx_port': ['ring:6'],
-                'tx_port': ['vhost:3'],
-                'type': 'forward'},
-               {'name': 'forward_3_rx',
-                'core': 5,
-                'rx_port': ['vhost:3'],
-                'tx_port': ['ring:7'],
-                'type': 'forward'},
-               {'name': 'forward_4_tx',
-                'core': 6,
-                'rx_port': ['ring:8'],
-                'tx_port': ['vhost:4'],
-                'type': 'forward'},
-               {'name': 'forward_4_rx',
-                'core': 7,
-                'rx_port': ['vhost:4'],
-                'tx_port': ['ring:9'],
-                'type': 'forward'},
-               {'name': 'classifier',
-                'core': 8,
-                'rx_port': ['phy:0'],
-                'tx_port': ['ring:4', 'ring:6', 'ring:8'],
-                'type': 'classifier_mac'},
-               {'name': 'merger',
-                'core': 9,
-                'rx_port': ['ring:5', 'ring:7', 'ring:9'],
-                'tx_port': ['phy:0'],
-                'type': 'merge'}]
-
-        cores = self.agent._get_cores("0x3fe")
-        ret = self.agent._conf_components(self.sec_id,
-                                          self.vhost_id,
-                                          num_vhost, cores)
-        self.assertEqual(ret, res)
 
     def test_set_classifier_table_con1(self):
         # conditions to exec if statement

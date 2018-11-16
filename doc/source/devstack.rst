@@ -40,6 +40,8 @@ Details will be explained separately into some categories later.
 +-------------------------+------------------------------+-------------------------------------------+
 | DPDK_PORT_MAPPINGS      | <must be specified>          | configuration information                 |
 +-------------------------+------------------------------+-------------------------------------------+
+| SPP_COMPONENT_CONF      | ""                           | component configuraion file               |
++-------------------------+------------------------------+-------------------------------------------+
 | SPP_PRIMARY_SOCKET_MEM  | 1024                         | --socket-mem of spp_primary               |
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_PRIMARY_CORE_MASK   | 0x02                         | core_mask of spp_primary                  |
@@ -104,6 +106,16 @@ in order of PCI address (i.e. in order of DPDK port).
 example::
 
   DPDK_PORT_MAPPINGS=00:04.0#phys1#2#0xfe,00:05.0#phys2#2#xfc02
+
+SPP_COMPONENT_CONF
+++++++++++++++++++
+
+Specify the path name that defines component configuration with yaml
+format if non default component configuration is defined.
+
+See customization_ about yaml definition.
+
+.. _customization: customization.rst
 
 SPP_PRIMARY_SOCKET_MEM
 ++++++++++++++++++++++

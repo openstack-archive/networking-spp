@@ -124,6 +124,16 @@ Configuration example
   SPP_PRIMARY_CORE_MASK=0x2
   DPDK_PORT_MAPPINGS=00:04.0#phys1#2#0xfe,00:05.0#phys2#2#xfc02
 
+Customization of component construction
+---------------------------------------
+
+There is a way to construct components as other than default
+explained above.
+
+See customization_ for details.
+
+.. _customization: customization.rst
+
 Communication between server and agent
 ======================================
 
@@ -173,6 +183,11 @@ information for each NIC assigned to SPP.
 The order of dict is the port order of DPDK.
 The key and value of dict are as follows.
 
+vf
+  array of spp_vf info
+
+spp_vf info is as follows.
+
 pci_address
   PCI address of the NIC
 
@@ -185,9 +200,29 @@ num_vhost
 core_mask
   core_mask of spp_vf for the NIC
 
+components
+  array of component info
+
+component info is as follows.
+
+core
+  core id
+
+type
+  component type
+
+name
+  component name
+
+tx_port
+  array of tx ports
+
+rx_port
+  array of rx ports
+
 example::
 
-  [{"num_vhost": 2, "pci_address": "00:04.0", "physical_network": "phys1", "core_mask": "0xfe"}, {"num_vhost": 2, "pci_address": "00:05.0", "physical_network": "phys2", "core_mask": "0xfc02"}]
+  {"vf": [{"num_vhost": 2, "core_mask": "0xfe", "pci_address": "00:04.0", "physical_network": "phys1", "components": [{"core": 2, "tx_port": ["vhost:0"], "type": "forward", "name": "forward_0_tx", "rx_port": ["ring:0"]}, {"core": 3, "tx_port": ["ring:1"], "type": "forward", "name": "forward_0_rx", "rx_port": ["vhost:0"]}, {"core": 4, "tx_port": ["vhost:1"], "type": "forward", "name": "forward_1_tx", "rx_port": ["ring:2"]}, {"core": 5, "tx_port": ["ring:3"], "type": "forward", "name": "forward_1_rx", "rx_port": ["vhost:1"]}, {"core": 6, "tx_port": ["ring:0", "ring:2"], "type": "classifier_mac", "name": "classifier", "rx_port": ["phy:0"]}, {"core": 7, "tx_port": ["phy:0"], "type": "merge", "name": "merger", "rx_port": ["ring:1", "ring:3"]}]}, {"num_vhost": 2, "core_mask": "0xfc02", "pci_address": "00:05.0", "physical_network": "phys2", "components": [{"core": 10, "tx_port": ["vhost:2"], "type": "forward", "name": "forward_2_tx", "rx_port": ["ring:4"]}, {"core": 11, "tx_port": ["ring:5"], "type": "forward", "name": "forward_2_rx", "rx_port": ["vhost:2"]}, {"core": 12, "tx_port": ["vhost:3"], "type": "forward", "name": "forward_3_tx", "rx_port": ["ring:6"]}, {"core": 13, "tx_port": ["ring:7"], "type": "forward", "name": "forward_3_rx", "rx_port": ["vhost:3"]}, {"core": 14, "tx_port": ["ring:4", "ring:6"], "type": "classifier_mac", "name": "classifier", "rx_port": ["phy:1"]}, {"core": 15, "tx_port": ["phy:1"], "type": "merge", "name": "merger", "rx_port": ["ring:5", "ring:7"]}]}]}
 
 /spp/openstack/vhost/<host>/<phys>/<vhost_id>
 +++++++++++++++++++++++++++++++++++++++++++++

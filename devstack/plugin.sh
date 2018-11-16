@@ -146,8 +146,8 @@ function configure_spp_agent() {
     if [ -z "$SPP_HOST" ]; then
         SPP_HOST=$(hostname -s)
     fi
-    python $NETWORKING_SPP_DIR/devstack/spp-config-build.py \
-        $DPDK_PORT_MAPPINGS $SPP_HOST $ETCD_HOST $ETCD_PORT
+    export DPDK_PORT_MAPPINGS SPP_HOST ETCD_HOST ETCD_PORT SPP_COMPONENT_CONF
+    python $NETWORKING_SPP_DIR/devstack/spp-config-build.py
 }
 
 function unconfigure_spp_agent() {
