@@ -24,7 +24,7 @@ Details will be explained separately into some categories later.
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_GIT_REPO            | http://dpdk.org/git/apps/spp | SPP repository                            |
 +-------------------------+------------------------------+-------------------------------------------+
-| SPP_GIT_TAG             | $DPDK_GIT_TAG                | branch(tag) of SPP                        |
+| SPP_GIT_TAG             | v18.05.1                     | branch(tag) of SPP                        |
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_DIR                 | $DEST/SPP-$SPP_GIT_TAG       | SPP installation directory                |
 +-------------------------+------------------------------+-------------------------------------------+
@@ -47,6 +47,10 @@ Details will be explained separately into some categories later.
 | SPP_PRIMATY_SOCK_PORT   | 5555                         | socket port for spp_primary               |
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_SECONDARY_SOCK_PORT | 6666                         | socket port for spp_vf                    |
++-------------------------+------------------------------+-------------------------------------------+
+| SPP_API_PORT            | 7777                         | spp-ctl web API port number               |
++-------------------------+------------------------------+-------------------------------------------+
+| SPP_CTL_IP_ADDR         | 127.0.0.1                    | bind ip address of spp-ctl                |
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_HOST                | $(hostname -s)               | host name                                 |
 +-------------------------+------------------------------+-------------------------------------------+
@@ -158,11 +162,11 @@ The following parameters are reflected in the configuration.
 The configuration parameters corresponding to each parameter
 are shown below.
 
-SPP_PRIMATY_SOCK_PORT
-  [spp] primary_sock_port
+SPP_CTL_IP_ADDR
+  [spp] api_ip_addr
 
-SPP_SECONDARY_SOCK_PORT
-  [spp] secondary_sock_port
+SPP_API_PORT
+  [spp] api_port
 
 ETCD_HOST
   [spp] etcd_host

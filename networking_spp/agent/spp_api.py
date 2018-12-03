@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
+import requests
 
 from oslo_log import log as logging
 
@@ -23,67 +23,63 @@ LOG = logging.getLogger(__name__)
 
 class SppVfApi(object):
 
-    def __init__(self, spp_cm):
-        self.spp_cm = spp_cm
+    def __init__(self, sec_id, api_ip_addr, api_port):
+        self.sec_id = sec_id
+        self.api_port = api_port
+        self.host_url = "http://%s:%d" % (api_ip_addr, api_port)
+        self.vf_url = "/v1/vfs/%d" % sec_id
+        self.info = None
 
-    def _exec_command(self, sec_id, command):
-        LOG.info("spp_vf(%d) command executed: %s", sec_id, command)
-        res = self.spp_cm.sec_command(sec_id, command)
-        ret = json.loads(res)
-        result = ret["results"][0]
-        if result["result"] == "error":
-            msg = result["error_details"]["message"]
-            raise RuntimeError("command %s error: %s" % (command, msg))
-        return ret
+    def send_request(self, method, url, data=None):
+        path = self.host_url + self.vf_url + url
+        r = requests.request(method, path, json=data)
+        if r.status_code >= 400:
+            raise RuntimeError("%s %s error: %s" %
+                               (method, self.vf_url + url, r.text))
+        if r.status_code != 204:
+            return r.json()
 
-    def get_status(self, sec_id):
-        ret = self._exec_command(sec_id, "status")
-        return ret["info"]
+    def get_status(self):
+        ret = self.send_request("GET", "")
+        LOG.info("info %d: %s", self.sec_id, ret)
+        self.info = ret
 
-    def make_component(self, sec_id, comp_name, core_id, comp_type):
-        command = ("component start {comp_name} {core_id} {comp_type}"
-                   .format(**locals()))
-        self._exec_command(sec_id, command)
+    def make_component(self, comp_name, core_id, comp_type):
+        data = {"name": comp_name, "core": core_id, "type": comp_type}
+        self.send_request("POST", "/components", data)
 
-    def port_add(self, sec_id, port, direction, comp_name,
-                 op=None, vlan_id=None):
-        command = ("port add {port} {direction} {comp_name}"
-                   .format(**locals()))
+    def port_add(self, port, direction, comp_name, op=None, vlan_id=None):
+        data = {"action": "attach", "port": port, "dir": direction}
         if op:
-            command += " %s" % op
             if op == "add_vlantag":
-                command += " %d 0" % vlan_id
-        self._exec_command(sec_id, command)
+                vlan = {"operation": "add", "id": vlan_id, "pcp": 0}
+            else:
+                vlan = {"operation": "del"}
+            data["vlan"] = vlan
+        path = "/components/%s/ports" % comp_name
+        self.send_request("PUT", path, data)
 
-    def port_del(self, sec_id, port, direction, comp_name):
-        command = ("port del {port} {direction} {comp_name}"
-                   .format(**locals()))
-        self._exec_command(sec_id, command)
+    def port_del(self, port, direction, comp_name):
+        data = {"action": "detach", "port": port, "dir": direction}
+        path = "/components/%s/ports" % comp_name
+        self.send_request("PUT", path, data)
 
-    def flush(self, sec_id):
-        self._exec_command(sec_id, "flush")
+    def set_classifier_table(self, mac_address, port):
+        data = {"action": "add", "type": "mac", "mac_address": mac_address,
+                "port": port}
+        self.send_request("PUT", "/classifier_table", data)
 
-    def cancel(self, sec_id):
-        self._exec_command(sec_id, "cancel")
+    def clear_classifier_table(self, mac_address, port):
+        data = {"action": "del", "type": "mac", "mac_address": mac_address,
+                "port": port}
+        self.send_request("PUT", "/classifier_table", data)
 
-    def set_classifier_table(self, sec_id, mac_address, port):
-        command = ("classifier_table add mac {mac_address} {port}"
-                   .format(**locals()))
-        self._exec_command(sec_id, command)
+    def set_classifier_table_with_vlan(self, mac_address, port, vlan_id):
+        data = {"action": "add", "type": "vlan", "mac_address": mac_address,
+                "port": port, "vlan": vlan_id}
+        self.send_request("PUT", "/classifier_table", data)
 
-    def clear_classifier_table(self, sec_id, mac_address, port):
-        command = ("classifier_table del mac {mac_address} {port}"
-                   .format(**locals()))
-        self._exec_command(sec_id, command)
-
-    def set_classifier_table_with_vlan(self, sec_id, mac_address, port,
-                                       vlan_id):
-        command = ("classifier_table add vlan {vlan_id} {mac_address} {port}"
-                   .format(**locals()))
-        self._exec_command(sec_id, command)
-
-    def clear_classifier_table_with_vlan(self, sec_id, mac_address, port,
-                                         vlan_id):
-        command = ("classifier_table del vlan {vlan_id} {mac_address} {port}"
-                   .format(**locals()))
-        self._exec_command(sec_id, command)
+    def clear_classifier_table_with_vlan(self, mac_address, port, vlan_id):
+        data = {"action": "del", "type": "vlan", "mac_address": mac_address,
+                "port": port, "vlan": vlan_id}
+        self.send_request("PUT", "/classifier_table", data)
