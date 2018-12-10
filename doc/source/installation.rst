@@ -16,10 +16,7 @@ In control node, there are not many parameters related to networking-spp
 that should be set in local.conf.
 
 Parameters related to networking-spp are briefly described below with examples.
-See devstack_ for details on parameters added by networking-spp.
-
-.. _devstack: devstack.rst
-
+See :doc:`devstack` for details on parameters added by networking-spp.
 
 Note that it is a fragment extracted only for networking-spp::
 
@@ -135,9 +132,7 @@ Note that it is necessary to execute devstack of compute node with control
 node in operation.
 
 Parameters related to networking-spp are briefly described below with examples.
-See devstack_ for details on parameters added by networking-spp.
-
-.. _devstack: devstack.rst
+See :doc:`devstack` for details on parameters added by networking-spp.
 
 Note that it is a fragment extracted only for networking-spp::
 
