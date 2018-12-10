@@ -113,7 +113,7 @@ core mask of spp_vf
   specify what to use as the master core.
 
 Configuration example
-++++++++++++++++++++
++++++++++++++++++++++
 
 * Both spp_primary and spp_vfs share the master core and use core id 1.
 * spp_vf(1) uses two vhostusers and uses core id 2 to 7.
