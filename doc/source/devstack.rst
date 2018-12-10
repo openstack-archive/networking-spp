@@ -94,9 +94,8 @@ number of vhostusers
 core_mask
   core_mask of the spp_vf process corresponding to the NIC.
   This is a parameter passed directly to the DPDK option '-c' of spp_vf.
-  See SPP or DPDK document for details. See example_ also.
-
-.. _example: architecture.rst#example-of-core-mask-setting-of-spp-processes
+  See SPP or DPDK document for details.
+  See :ref:`example-of-core-mask-setting` also.
 
 As a whole, specify all the NICs for SPP by separating them with a comma(,)
 in order of PCI address (i.e. in order of DPDK port).
@@ -122,7 +121,8 @@ SPP_PRIMARY_CORE_MASK
 
 core_mask of the spp_primary process. This is a parameter passed
 directly to the DPDK option '-c' of spp_primary.
-See SPP or DPDK document for details. See example_ also.
+See SPP or DPDK document for details.
+See :ref:`example-of-core-mask-setting` also.
 
 Option parameters for compute node
 ----------------------------------

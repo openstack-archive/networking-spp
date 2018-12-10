@@ -62,9 +62,7 @@ environment. For example, wiring between ports can not be freely
 changed. Wiring is done in a predetermined pattern on the compute
 node.
 
-For details, see architecture_.
-
-.. _architecture: doc/source/architecture.rst
+For details, see :doc:`architecture`.
 
 Assumed environment
 ===================
@@ -109,14 +107,9 @@ Installation
 
 It supports installation with devstack.
 
-See the `installation document`_.
-
-.. _`installation document`: doc/source/installation.rst
+See :doc:`installation`.
 
 Usage
 =====
 
-See the `usage document`_.
-
-.. _`usage document`: doc/source/usage.rst
-
+See :doc:`usage`.

@@ -87,6 +87,8 @@ Component composition of spp_vf
                                               +---------+      |           |
                                                                +-----------+
 
+.. _example-of-core-mask-setting:
+
 Example of core mask setting of spp processes
 ---------------------------------------------
 
