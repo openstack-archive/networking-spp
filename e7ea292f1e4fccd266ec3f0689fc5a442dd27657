@@ -1,0 +1,8 @@
+Code-Review+2: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Workflow+1: Tetsuro Nakamura <nakamura.tetsuro@lab.ntt.co.jp>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Tue, 11 Dec 2018 06:36:37 +0000
+Reviewed-on: https://review.openstack.org/623141
+Project: openstack/networking-spp
+Branch: refs/heads/master
