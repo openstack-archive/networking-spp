@@ -36,7 +36,7 @@ class SppMechanismTestCase(base.BaseTestCase):
     def test_bind_port_agent_conf(self, mocked_spp_agent_alive):
         self.driver.etcd.get.return_value = None
         self.driver.bind_port(self.context)
-        mocked_spp_agent_alive.aseert_not_called()
+        mocked_spp_agent_alive.assert_not_called()
 
     @mock.patch('networking_spp.mech_driver.mech_spp.'
                 'LOG.warn')
@@ -45,7 +45,7 @@ class SppMechanismTestCase(base.BaseTestCase):
         self.driver.etcd.get.return_value = json.dumps(agent_conf)
         self.context.host_agents.return_value = []
         self.driver.bind_port(self.context)
-        mocked_warn.aseert_called()
+        mocked_warn.assert_called()
 
     @mock.patch('networking_spp.mech_driver.mech_spp.'
                 'SppMechanismDriver._spp_agent_alive')
@@ -61,7 +61,7 @@ class SppMechanismTestCase(base.BaseTestCase):
                    api.PHYSICAL_NETWORK: 'phy_net'}
         self.context.segments_to_bind = [segment]
         self.driver.bind_port(self.context)
-        mocked_try_to_bind.aseert_called()
+        mocked_try_to_bind.assert_called()
 
     @mock.patch('networking_spp.mech_driver.mech_spp.'
                 'SppMechanismDriver._spp_agent_alive')
@@ -77,7 +77,7 @@ class SppMechanismTestCase(base.BaseTestCase):
                    api.PHYSICAL_NETWORK: 'phy_net'}
         self.context.segments_to_bind = [segment]
         self.driver.bind_port(self.context)
-        mocked_try_to_bind.aseert_called()
+        mocked_try_to_bind.assert_called()
 
     @mock.patch('networking_spp.mech_driver.mech_spp.'
                 'SppMechanismDriver._spp_agent_alive')
@@ -92,7 +92,7 @@ class SppMechanismTestCase(base.BaseTestCase):
         segment = {api.NETWORK_TYPE: 'value', api.PHYSICAL_NETWORK: 'value'}
         self.context.segments_to_bind = [segment]
         self.driver.bind_port(self.context)
-        mocked_try_to_bind.aseert_not_called()
+        mocked_try_to_bind.assert_not_called()
 
     @mock.patch('networking_spp.mech_driver.mech_spp.'
                 'SppMechanismDriver._unplug_port')
