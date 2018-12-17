@@ -12,7 +12,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   readme
+   introduction
    architecture
    installation
    devstack
