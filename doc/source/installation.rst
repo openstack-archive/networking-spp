@@ -65,7 +65,7 @@ Allocation of hugepage
 ++++++++++++++++++++++
 
 SPP uses hugepage and VMs that use SPP networks also need to use hugepage.
-Normally, the memory on the host should be allocated as hugepage execpt
+Normally, the memory on the host should be allocated as hugepage except
 for the amount used by the system services.
 The allocated hugepages are shared by SPP and VMs.
 
