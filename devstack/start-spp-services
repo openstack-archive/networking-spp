@@ -10,6 +10,7 @@ import time
 SPP_CTL_SERVICE = "spp_ctl.service"
 SPP_PRIMATY_SERVICE = "spp_primary.service"
 SPP_VF_SERVICE = "spp_vf-{sec_id}.service"
+SPP_MIRROR_SERVICE = "spp_mirror.service"
 SPP_WAIT_TIMEOUT = 300
 
 
@@ -96,9 +97,11 @@ def service_start(service):
 def main():
     try:
         num_sec = int(sys.argv[1])
-        api_ip_port = sys.argv[2]
+        mirror_support = int(sys.argv[2])
+        api_ip_port = sys.argv[3]
     except:
-        print("usage: start-spp-services num_secondary api_ip:port")
+        print("usage: start-spp-services num_secondary mirror_support"
+              " api_ip:port")
         return 1
 
     service_start(SPP_CTL_SERVICE)
@@ -111,9 +114,12 @@ def main():
     for sec_id in range(1, num_sec + 1):
         service = SPP_VF_SERVICE.format(sec_id=sec_id)
         service_start(service)
-
-    for sec_id in range(1, num_sec + 1):
         if not wait_secondary_initialized(api_ip_port, sec_id):
+            return 1
+
+    if mirror_support:
+        service_start(SPP_MIRROR_SERVICE)
+        if not wait_secondary_initialized(api_ip_port, num_sec + 1):
             return 1
 
     return 0

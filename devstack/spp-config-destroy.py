@@ -40,6 +40,10 @@ def port_status_path(host):
     return SPP_ROOT + "port_status/%s" % host
 
 
+def mirror_path(host):
+    return SPP_ROOT + "mirror/%s" % host
+
+
 def main():
     if len(sys.argv) < 4:
         print("usage: spp-config-destroy host etcd_host etcd_port")
@@ -54,6 +58,7 @@ def main():
     etcd.delete_prefix(bind_port_path(host))
     etcd.delete_prefix(action_path(host))
     etcd.delete_prefix(port_status_path(host))
+    etcd.delete_prefix(mirror_path(host))
 
 
 if __name__ == "__main__":

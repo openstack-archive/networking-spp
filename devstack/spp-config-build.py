@@ -31,6 +31,10 @@ def vhost_path(host, phys_net, vhost):
     return SPP_ROOT + "vhost/%s/%s/%d" % (host, phys_net, vhost)
 
 
+def mirror_path(host, mirror_id):
+    return SPP_ROOT + "mirror/%s/%d" % (host, mirror_id)
+
+
 def get_cores(core_mask):
     mask = int(core_mask, base=16)
     cores = []
@@ -90,6 +94,17 @@ def conf_components(sec_id, start_vhost_id, num_vhost, cores):
     return components
 
 
+def mirror_components(num_vhost, num_mirror, cores):
+    ring_id = num_vhost * 2
+    components = []
+    for i in range(num_mirror):
+        components.append({"core": cores.pop(0),
+                           "ports": ["ring:%d" % ring_id,
+                                     "ring:%d" % (ring_id + 1)]})
+        ring_id += 2
+    return components
+
+
 def main():
     dpdk_port_mappings = os.environ.get("DPDK_PORT_MAPPINGS")
     host = os.environ.get("SPP_HOST")
@@ -101,14 +116,18 @@ def main():
               " must be defined.")
         return 1
     component_conf = os.environ.get("SPP_COMPONENT_CONF")
+    spp_mirror = os.environ.get("SPP_MIRROR")
 
-    def_confs = {}
+    def_vfs = []
+    def_mirror = {}
     if component_conf:
         with open(component_conf, 'r') as f:
             def_confs = yaml.load(f)
+            def_vfs = def_confs['vf']
+            if spp_mirror:
+                def_mirror = def_confs['mirror']
 
-    def_vfs = def_confs.get('vf', [])
-    confs = []
+    vfs = []
     sec_id = 1
     vhost_id = 0
     for map in dpdk_port_mappings.split(','):
@@ -119,22 +138,37 @@ def main():
             components = def_vfs[sec_id - 1]['components']
         else:
             components = conf_components(sec_id, vhost_id, num_vhost, cores)
-        conf = {'physical_network': phys, 'pci_address': pci,
-                'num_vhost': num_vhost, 'core_mask': core_mask,
-                'components': components}
-        confs.append(conf)
+        vf = {'physical_network': phys, 'pci_address': pci,
+              'num_vhost': num_vhost, 'core_mask': core_mask,
+              'components': components}
+        vfs.append(vf)
         sec_id += 1
         vhost_id += num_vhost
 
+    host_conf = {'vf': vfs}
+    if spp_mirror:
+        if def_mirror:
+            mirror = def_mirror
+        else:
+            num_mirror, core_mask = spp_mirror.split('#')
+            num_mirror = int(num_mirror)
+            cores = get_cores(core_mask)
+            mirror = mirror_components(vhost_id, num_mirror, cores)
+        host_conf['mirror'] = mirror
+
     etcd = etcd3.client(etcd_host, etcd_port)
-    etcd.put(config_path(host), json.dumps({'vf': confs}))
+    etcd.put(config_path(host), json.dumps(host_conf))
 
     num = 0
-    for conf in confs:
-        phys = conf['physical_network']
-        for i in range(conf['num_vhost']):
+    for vf in vfs:
+        phys = vf['physical_network']
+        for i in range(vf['num_vhost']):
             etcd.put(vhost_path(host, phys, num), 'None')
             num += 1
+
+    if spp_mirror:
+        for i in range(len(mirror)):
+            etcd.put(mirror_path(host, i), 'None')
 
 
 if __name__ == "__main__":

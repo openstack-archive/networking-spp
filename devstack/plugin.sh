@@ -146,7 +146,7 @@ function configure_spp_agent() {
     if [ -z "$SPP_HOST" ]; then
         SPP_HOST=$(hostname -s)
     fi
-    export DPDK_PORT_MAPPINGS SPP_HOST ETCD_HOST ETCD_PORT SPP_COMPONENT_CONF
+    export DPDK_PORT_MAPPINGS SPP_HOST ETCD_HOST ETCD_PORT SPP_COMPONENT_CONF SPP_MIRROR
     python $NETWORKING_SPP_DIR/devstack/spp-config-build.py
 }
 
@@ -185,7 +185,12 @@ function build_spp_primary_service() {
     for ((i=0; i<${#ARRAY[@]}; i++)); do
         PORT_MASK=$(( $PORT_MASK + (1 << $i) ))
     done
-    NUM_RING=$(( $NUM_VHOST * 2 ))
+
+    NUM_MIRROR=0
+    if [[ -n "$SPP_MIRROR" ]]; then
+        NUM_MIRROR=`echo $SPP_MIRROR | cut -f 1 -d "#"`
+    fi
+    NUM_RING=$(( $NUM_VHOST * 2 + $NUM_MIRROR * 2 ))
 
     PRIMARY_BIN=$SPP_DIR/src/primary/x86_64-native-linuxapp-gcc/spp_primary
     PRIMARY_CMD="$PRIMARY_BIN -c $SPP_PRIMARY_CORE_MASK -n 4 --socket-mem $SPP_PRIMARY_SOCKET_MEM --huge-dir $SPP_HUGEPAGE_MOUNT --proc-type primary -- -p $PORT_MASK -n $NUM_RING -s $SPP_CTL_IP_ADDR:$SPP_PRIMARY_SOCK_PORT"
@@ -209,6 +214,20 @@ function build_spp_vf_service() {
     iniset -sudo $unitfile "Service" "ExecStart" "$SEC_CMD"
 }
 
+function build_spp_mirror_service() {
+    local sec_id=$1
+    local core_mask=$2
+    local service="spp_mirror.service"
+    local unitfile="$SYSTEMD_DIR/$service"
+
+    SEC_BIN=$SPP_DIR/src/mirror/x86_64-native-linuxapp-gcc/spp_mirror
+    SEC_CMD="$SEC_BIN -c $core_mask -n 4 --proc-type secondary -- --client-id $sec_id -s $SPP_CTL_IP_ADDR:$SPP_SECONDARY_SOCK_PORT"
+
+    iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
+    iniset -sudo $unitfile "Service" "User" "root"
+    iniset -sudo $unitfile "Service" "ExecStart" "$SEC_CMD"
+}
+
 function build_systemd_services() {
     mkdir -p $SYSTEMD_DIR
     build_spp_ctl_service
@@ -221,6 +240,10 @@ function build_systemd_services() {
         build_spp_vf_service $SEC_ID $mask
         SEC_ID=$(( $SEC_ID + 1 ))
     done
+    if [[ -n "$SPP_MIRROR" ]]; then
+        mask=`echo $SPP_MIRROR | cut -f 2 -d "#"`
+        build_spp_mirror_service $SEC_ID $mask
+    fi
 
     # changes to existing units sometimes need a refresh
     $SYSTEMCTL daemon-reload
@@ -238,12 +261,20 @@ function start_spp_services() {
         NUM_SEC=$(( $NUM_SEC + 1 ))
     done
 
-    sudo $NETWORKING_SPP_DIR/devstack/start-spp-services $NUM_SEC $SPP_CTL_IP_ADDR:$SPP_API_PORT
+    MIRROR_SUPPORT=0
+    if [[ -n "$SPP_MIRROR" ]]; then
+        MIRROR_SUPPORT=1
+    fi
+
+    sudo $NETWORKING_SPP_DIR/devstack/start-spp-services $NUM_SEC $MIRROR_SUPPORT $SPP_CTL_IP_ADDR:$SPP_API_PORT
 }
 
 function stop_systemd_services() {
     stop_process q-spp-agt
     $SYSTEMCTL stop spp_ctl.service
+    if [[ -n "$SPP_MIRROR" ]]; then
+        sudo systemctl stop spp_mirror.service
+    fi
     MAPPINGS=${DPDK_PORT_MAPPINGS//,/ }
     ARRAY=( $MAPPINGS )
     for ((i=1; i<=${#ARRAY[@]}; i++)); do
