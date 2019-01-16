@@ -46,6 +46,30 @@ SPP_PREFIX_ACTION = SPP_ROOT + "action/"
 SPP_PREFIX_ACTION_HOST = SPP_PREFIX_ACTION + "{host}/"
 SPP_KEY_ACTION = SPP_PREFIX_ACTION_HOST + "{port_id}"
 
+# manage mirror usage
+# /spp/openstack/mirror/<host>/<mirror_id>
+SPP_PREFIX_MIRROR = SPP_ROOT + "mirror/"
+SPP_PREFIX_MIRROR_HOST = SPP_PREFIX_MIRROR + "{host}/"
+SPP_KEY_MIRROR = SPP_PREFIX_MIRROR_HOST + "{mirror_id}"
+
+# to indicate tap plug done
+# /spp/openstack/tap_status/<host>/<tap_flow_id>
+SPP_PREFIX_TAP_STATUS = SPP_ROOT + "tap_status/"
+SPP_PREFIX_TAP_STATUS_HOST = SPP_PREFIX_TAP_STATUS + "{host}/"
+SPP_KEY_TAP_STATUS = SPP_PREFIX_TAP_STATUS_HOST + "{tap_flow_id}"
+
+# info for tap plug
+# /spp/openstack/tap_info/<host>/<tap_flow_id>
+SPP_PREFIX_TAP_INFO = SPP_ROOT + "tap_info/"
+SPP_PREFIX_TAP_INFO_HOST = SPP_PREFIX_TAP_INFO + "{host}/"
+SPP_KEY_TAP_INFO = SPP_PREFIX_TAP_INFO_HOST + "{tap_flow_id}"
+
+# plug/unplug tap
+# /spp/openstack/tap_action/<host>/<tap_flow_id>
+SPP_PREFIX_TAP_ACTION = SPP_ROOT + "tap_action/"
+SPP_PREFIX_TAP_ACTION_HOST = SPP_PREFIX_TAP_ACTION + "{host}/"
+SPP_KEY_TAP_ACTION = SPP_PREFIX_TAP_ACTION_HOST + "{tap_flow_id}"
+
 
 def configuration_key(host):
     return SPP_KEY_CONF.format(**locals())
@@ -77,3 +101,31 @@ def action_host_prefix(host):
 
 def action_key(host, port_id):
     return SPP_KEY_ACTION.format(**locals())
+
+
+def mirror_prefix(host):
+    return SPP_PREFIX_MIRROR_HOST.format(**locals())
+
+
+def mirror_key(host, mirror_id):
+    return SPP_KEY_MIRROR.format(**locals())
+
+
+def tap_status_key(host, tap_flow_id):
+    return SPP_KEY_TAP_STATUS.format(**locals())
+
+
+def tap_info_host_prefix(host):
+    return SPP_PREFIX_TAP_INFO_HOST.format(**locals())
+
+
+def tap_info_key(host, tap_flow_id):
+    return SPP_KEY_TAP_INFO.format(**locals())
+
+
+def tap_action_host_prefix(host):
+    return SPP_PREFIX_TAP_ACTION_HOST.format(**locals())
+
+
+def tap_action_key(host, tap_flow_id):
+    return SPP_KEY_TAP_ACTION.format(**locals())

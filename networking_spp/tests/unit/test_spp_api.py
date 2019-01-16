@@ -35,7 +35,7 @@ class SppVfApiTestCase(base.BaseTestCase):
         method = "METHOD"
         url = "/url"
         data = {"data": "data"}
-        path = self.spp_api.host_url + self.spp_api.vf_url + url
+        path = self.spp_api.host_url + self.spp_api.proc_url + url
         ret = mock.Mock()
         ret.status_code = 204
         m_request.return_value = ret
@@ -109,6 +109,20 @@ class SppVfApiTestCase(base.BaseTestCase):
         self.spp_api.port_del(port, direction, comp_name)
         m_send_request.assert_called_with("PUT", path, data)
 
+    def test_port_exist_con1(self):
+        self.spp_api.info = {
+            "components": [{"name": "con1",
+                            "rx_port": [{"port": "ring:1"}],
+                            "tx_port": [{"port": "vhost:1"}]}]}
+        self.assertTrue(self.spp_api.port_exist("ring:1", "rx", "con1"))
+
+    def test_port_exist_con2(self):
+        self.spp_api.info = {
+            "components": [{"name": "con1",
+                            "rx_port": [{"port": "ring:1"}],
+                            "tx_port": [{"port": "vhost:1"}]}]}
+        self.assertFalse(self.spp_api.port_exist("ring:1", "tx", "con1"))
+
     @mock.patch('networking_spp.agent.spp_api.SppVfApi'
                 '.send_request')
     def test_set_classifier_table(self, m_send_request):
@@ -150,3 +164,23 @@ class SppVfApiTestCase(base.BaseTestCase):
                 "port": port, "vlan": vlan_id}
         self.spp_api.clear_classifier_table_with_vlan(mac, port, vlan_id)
         m_send_request.assert_called_with("PUT", "/classifier_table", data)
+
+
+class SppMirrorApiTestCase(base.BaseTestCase):
+
+    def setUp(self):
+        super(SppMirrorApiTestCase, self).setUp()
+        self.sec_id = random.randint(1, 99)
+        self.api_ip_addr = "127.0.0.1"
+        self.api_port = 7777
+        self.spp_api = spp_api.SppMirrorApi(self.sec_id, self.api_ip_addr,
+                                            self.api_port)
+
+    @mock.patch('networking_spp.agent.spp_api.SppMirrorApi'
+                '.send_request')
+    def test_make_component(self, m_send_request):
+        comp_name = 'cn'
+        core_id = 'ci'
+        data = {"name": comp_name, "core": core_id, "type": "mirror"}
+        self.spp_api.make_component(comp_name, core_id)
+        m_send_request.assert_called_with("POST", "/components", data)
