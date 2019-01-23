@@ -6,3 +6,9 @@
     networking-spp-integration-ci:
       jobs:
         - networking-spp-tempest-test
+
+- project:
+    name: openstack/networking-spp
+    templates:
+      - openstack-python35-jobs
+      - openstack-python36-jobs
