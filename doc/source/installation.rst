@@ -152,7 +152,7 @@ Note that it is a fragment extracted only for networking-spp::
   enable_service q-spp-agt  # spp-agent
 
   [[post-config|$NOVA_CONF]]
-  [DFAULT]
+  [DEFAULT]
   vcpu_pin_set = 8,9,16-19              # specify the cores for VMs.
 
   [libvirt]

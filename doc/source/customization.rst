@@ -125,6 +125,9 @@ sample_1.yaml::
       tx_port: ['phy:1']
       type: merge
 
+
+.. _resource-saving-example-2:
+
 Example 2: omitting forwarders
 ==============================
 

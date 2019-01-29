@@ -18,6 +18,7 @@ Contents:
    devstack
    usage
    customization
+   taas
 
 Indices and tables
 ==================

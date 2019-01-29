@@ -14,7 +14,7 @@ Details will be explained separately into some categories later.
 +=========================+==============================+===========================================+
 | DPDK_GIT_REPO           | http://dpdk.org/git/dpdk     | DPDK repository                           |
 +-------------------------+------------------------------+-------------------------------------------+
-| DPDK_GIT_TAG            | v18.05                       | branch(tag) of DPDK                       |
+| DPDK_GIT_TAG            | v18.08                       | branch(tag) of DPDK                       |
 +-------------------------+------------------------------+-------------------------------------------+
 | DPDK_DIR                | $DEST/DPDK-$DPDK_GIT_TAG     | DPDK installation directory               |
 +-------------------------+------------------------------+-------------------------------------------+
@@ -24,7 +24,7 @@ Details will be explained separately into some categories later.
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_GIT_REPO            | http://dpdk.org/git/apps/spp | SPP repository                            |
 +-------------------------+------------------------------+-------------------------------------------+
-| SPP_GIT_TAG             | v18.05.1                     | branch(tag) of SPP                        |
+| SPP_GIT_TAG             | v18.08                       | branch(tag) of SPP                        |
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_DIR                 | $DEST/SPP-$SPP_GIT_TAG       | SPP installation directory                |
 +-------------------------+------------------------------+-------------------------------------------+
@@ -40,7 +40,9 @@ Details will be explained separately into some categories later.
 +-------------------------+------------------------------+-------------------------------------------+
 | DPDK_PORT_MAPPINGS      | <must be specified>          | configuration information                 |
 +-------------------------+------------------------------+-------------------------------------------+
-| SPP_COMPONENT_CONF      | ""                           | component configuraion file               |
+| SPP_MIRROR              | ""                           | mirror configuration                      |
++-------------------------+------------------------------+-------------------------------------------+
+| SPP_COMPONENT_CONF      | ""                           | component configuration file              |
 +-------------------------+------------------------------+-------------------------------------------+
 | SPP_PRIMARY_SOCKET_MEM  | 1024                         | --socket-mem of spp_primary               |
 +-------------------------+------------------------------+-------------------------------------------+
@@ -105,6 +107,13 @@ in order of PCI address (i.e. in order of DPDK port).
 example::
 
   DPDK_PORT_MAPPINGS=00:04.0#phys1#2#0xfe,00:05.0#phys2#2#xfc02
+
+SPP_MIRROR
+++++++++++
+
+Specify mirror configuration for tap-as-a-service(taas).
+This must be specified if taas is used on the compute node.
+See :doc:`Using tap-as-a-service <taas>` for details.
 
 SPP_COMPONENT_CONF
 ++++++++++++++++++
