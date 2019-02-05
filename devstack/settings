@@ -37,3 +37,9 @@ ETCD_PORT=${ETCD_PORT:-2379}
 DEFAULT_IMAGE_NAME=${DEFAULT_IMAGE_NAME:-ubuntu-dpdk}
 DEFAULT_INSTANCE_TYPE=${DEFAULT_INSTANCE_TYPE:-dpdk}
 DEFAULT_INSTANCE_USER=${DEFAULT_INSTANCE_USER:-ubuntu}
+
+# this is for workaround for DPDK rte_mem_init failure.
+# note that it assumes 64bit architecture.
+# this parameter is not public. it will be removed in
+# the future.
+BASE_VIRTADDR=0x100000000

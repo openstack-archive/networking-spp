@@ -192,8 +192,14 @@ function build_spp_primary_service() {
     fi
     NUM_RING=$(( $NUM_VHOST * 2 + $NUM_MIRROR * 2 ))
 
+    # this is for workaround for DPDK rte_mem_init failure
+    # it will be removed in the future.
+    VIRTADDR_OPT=
+    if [[ -n "$BASE_VIRTADDR" ]]; then
+	VIRTADDR_OPT="--base-virtaddr $BASE_VIRTADDR"
+    fi
     PRIMARY_BIN=$SPP_DIR/src/primary/x86_64-native-linuxapp-gcc/spp_primary
-    PRIMARY_CMD="$PRIMARY_BIN -c $SPP_PRIMARY_CORE_MASK -n 4 --socket-mem $SPP_PRIMARY_SOCKET_MEM --huge-dir $SPP_HUGEPAGE_MOUNT --proc-type primary -- -p $PORT_MASK -n $NUM_RING -s $SPP_CTL_IP_ADDR:$SPP_PRIMARY_SOCK_PORT"
+    PRIMARY_CMD="$PRIMARY_BIN -c $SPP_PRIMARY_CORE_MASK -n 4 --socket-mem $SPP_PRIMARY_SOCKET_MEM --huge-dir $SPP_HUGEPAGE_MOUNT --proc-type primary $VIRTADDR_OPT -- -p $PORT_MASK -n $NUM_RING -s $SPP_CTL_IP_ADDR:$SPP_PRIMARY_SOCK_PORT"
 
     iniset -sudo $unitfile "Unit" "Description" "Devstack $service"
     iniset -sudo $unitfile "Service" "User" "root"
@@ -254,6 +260,10 @@ function build_systemd_services() {
 }
 
 function start_spp_services() {
+    # make sure ASLR off.
+    # DPDK primary process and secondary processes must be same address layout.
+    sudo sysctl -w kernel.randomize_va_space=0
+
     NUM_SEC=0
     MAPPINGS=${DPDK_PORT_MAPPINGS//,/ }
     ARRAY=( $MAPPINGS )
