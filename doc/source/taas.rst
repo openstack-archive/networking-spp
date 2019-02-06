@@ -28,9 +28,9 @@ Control node::
 
   enable_service etcd3
 
-  enable_plugin tap-as-a-service https://github.com/openstack/tap-as-a-service   # these three lines must be added for taas.
-  enable_service taas                                                            #
-  TAAS_SERVICE_DRIVER=TAAS:SPP:networking_spp.service_drivers.taas.SppTaasDriver #
+  enable_plugin tap-as-a-service https://github.com/openstack/tap-as-a-service           # these three lines must be added for taas.
+  enable_service taas                                                                    #
+  TAAS_SERVICE_DRIVER=TAAS:SPP:networking_spp.service_drivers.taas.SppTaasDriver:default #
 
   [[post-config|/$Q_PLUGIN_CONF_FILE]]
   [ml2]
