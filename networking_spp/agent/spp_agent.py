@@ -314,7 +314,7 @@ class SppAgent(object):
     def get_spp_configuration(self):
         value = self.etcd.get(etcd_key.configuration_key(self.host))
         mappings = json.loads(value)
-        LOG.info("SPP configuration: %s", mappings)
+        LOG.info("SPP configuration!: %s", mappings)
         return mappings
 
     def set_classifier_table(self, vhost_id, mac_address, vlan_id):
