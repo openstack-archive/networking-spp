@@ -1,7 +1,0 @@
-[Unit]
-Description = dpdk app pong
-
-[Service]
-ExecStart = /usr/local/bin/l2_ping_pong -- --pong
-Type = simple
-
